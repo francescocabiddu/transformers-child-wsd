@@ -1,0 +1,4 @@
+{"gold": "turkey_animal", "idx": 0, "matches": [["turkey_food", 0.9466003775596619], ["turkey_animal", 0.9058533310890198]], "tokens": ["kermit", "was", "in", "the", "country", ".", "he", "heard", "a", "turkey", ",", "which", "was", "cool", "."]}
+{"gold": "turkey_food", "idx": 1, "matches": [["turkey_food", 0.9469431638717651], ["turkey_animal", 0.9050244092941284]], "tokens": ["kermit", "was", "in", "the", "country", ".", "he", "cooked", "a", "turkey", ",", "which", "was", "cool", "."]}
+{"gold": "turkey_animal", "idx": 2, "matches": [["turkey_food", 0.9370449781417847], ["turkey_animal", 0.8950444459915161]], "tokens": ["kermit", "was", "in", "the", "country", ".", "the", "turkey", "was", "cool", "."]}
+{"gold": "turkey_food", "idx": 3, "matches": [["turkey_food", 0.9422446489334106], ["turkey_animal", 0.8980449438095093]], "tokens": ["kermit", "was", "having", "dinner", ".", "the", "turkey", "was", "cool", "."]}

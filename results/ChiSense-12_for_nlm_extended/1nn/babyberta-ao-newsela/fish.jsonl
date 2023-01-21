@@ -1,0 +1,4 @@
+{"gold": "fish_animal", "idx": 0, "matches": [["fish_animal", 0.6087983250617981], ["fish_food", 0.39245277643203735]], "tokens": ["oscar", "was", "at", "the", "beach", ".", "he", "caught", "a", "fish", ",", "which", "was", "exciting", "."]}
+{"gold": "fish_food", "idx": 1, "matches": [["fish_animal", 0.6108776330947876], ["fish_food", 0.42168742418289185]], "tokens": ["oscar", "was", "at", "the", "beach", ".", "he", "grilled", "a", "fish", ",", "which", "was", "exciting", "."]}
+{"gold": "fish_animal", "idx": 2, "matches": [["fish_animal", 0.6406795978546143], ["fish_food", 0.3981638252735138]], "tokens": ["oscar", "was", "at", "the", "ocean", ".", "the", "fish", "was", "exciting", "."]}
+{"gold": "fish_food", "idx": 3, "matches": [["fish_animal", 0.6267027258872986], ["fish_food", 0.3982643187046051]], "tokens": ["oscar", "was", "at", "a", "restaurant", ".", "the", "fish", "was", "exciting", "."]}

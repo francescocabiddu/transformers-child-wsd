@@ -1,0 +1,10 @@
+15	wendy bought some tools and a piece of wood . then , she got a nail .
+16	wendy bought some tools and a piece of wood . then , she chewed on a nail .
+15	wendy bought some tools and a piece of wood . then , she drew a nail .
+3	she got a nail .
+4	she chewed on a nail .
+3	she drew a nail .
+9	dora was in her house . she painted a nail , which was fun .
+10	dora was in her house . she pulled out a nail , which was fun .
+8	dora was at the beauty salon . the nail was long .
+7	dora was building a house . the nail was long .

@@ -1,0 +1,10 @@
+10	olivia had some chips . then , she saw the chicken .
+10	olivia had some chips . then , she ate the chicken .
+10	olivia had some chips . then , she rescued the chicken .
+3	she saw the chicken .
+3	she ate the chicken .
+3	she rescued the chicken .
+8	barney was on vacation . he fed a chicken , which was fun .
+8	barney was on vacation . he roasted a chicken , which was fun .
+8	barney was playing at a farm . the chicken was nice .
+7	barney was at a supermarket . the chicken was nice .

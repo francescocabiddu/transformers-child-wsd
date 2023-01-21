@@ -1,0 +1,14 @@
+12	sophia listened to some music . then , she played in a band .
+11	sophia listened to some music . then , she twisted a band .
+11	sophia listened to some music . then , she got a band .
+4	she played in a band .
+3	she twisted a band .
+3	she got a band .
+9	dora was in her room . she stretched the band , which was cool .
+10	dora was in her room . she listened to the band , which was cool .
+7	dora looked in her drawer . the band was cool .
+6	dora heard some music . the band was cool .
+18	elmo and his class were singing songs . the teacher could play music with anything , even a band .
+17	elmo and his class were singing songs . the teacher played music with anyone , even a band .
+34	spongebob , patrick , and sandy were playing music . spongebob had a drum , and patrick had a trumpet , but sandy didn’t have a guitar , so she had to use a band .
+34	spongebob , patrick , and sandy were playing music . spongebob had a drum , and patrick had a trumpet , but sandy didn’t have a guitar , so she had to leave the band .

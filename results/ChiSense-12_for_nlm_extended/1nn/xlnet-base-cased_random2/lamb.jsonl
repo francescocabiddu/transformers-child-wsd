@@ -1,0 +1,4 @@
+{"gold": "lamb_animal", "idx": 0, "matches": [["lamb_food", 0.9488710761070251], ["lamb_animal", 0.9469463229179382]], "tokens": ["cookie", "monster", "was", "in", "california", ".", "he", "petted", "a", "lamb", ",", "which", "was", "good", "."]}
+{"gold": "lamb_food", "idx": 1, "matches": [["lamb_food", 0.952211856842041], ["lamb_animal", 0.9488292932510376]], "tokens": ["cookie", "monster", "was", "in", "california", ".", "he", "barbecued", "a", "lamb", ",", "which", "was", "good", "."]}
+{"gold": "lamb_animal", "idx": 2, "matches": [["lamb_food", 0.9470280408859253], ["lamb_animal", 0.944365382194519]], "tokens": ["cookie", "monster", "was", "in", "a", "barn", ".", "the", "lamb", "was", "good", "."]}
+{"gold": "lamb_food", "idx": 3, "matches": [["lamb_food", 0.9477525353431702], ["lamb_animal", 0.9445114135742188]], "tokens": ["cookie", "monster", "was", "at", "a", "barbecue", ".", "the", "lamb", "was", "good", "."]}

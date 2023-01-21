@@ -1,0 +1,14 @@
+12	charlie got some stamps this morning . then , he sang the letters .
+13	charlie got some stamps this morning . then , he looked for the letters .
+12	charlie got some stamps this morning . then , he posted the letters .
+3	he sang the letters .
+4	he looked for the letters .
+3	he posted the letters .
+9	bugs bunny was at school . he said a letter , which was fun .
+9	bugs bunny was at school . he sent a letter , which was fun .
+7	bugs bunny was at school . the letter was fun .
+9	bugs bunny was at the post office . the letter was fun .
+15	dora’s mom wrote a friendly note to her teacher , and then she signed the letter .
+17	dora’s mom wrote a friendly note to her teacher , and then she signed it with a letter .
+17	barney was on holiday . he sent lots of postcards , and he only wrote a single letter .
+18	barney was on holiday . he sent lots of postcards , and on them he wrote a single letter .

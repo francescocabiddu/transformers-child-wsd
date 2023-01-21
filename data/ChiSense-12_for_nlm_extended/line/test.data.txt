@@ -1,0 +1,10 @@
+15	leo and mark were waiting for the bus . then , mark rubbed out the line .
+14	leo and mark were waiting for the bus . then , mark followed the line .
+15	leo and mark were waiting for the bus . then , mark stood in the line .
+4	mark rubbed out the line .
+3	mark followed the line .
+4	mark stood in the line .
+10	spongebob and patrick were playing . they got in a line , which was fun .
+9	spongebob and patrick were playing . they drew a line , which was fun .
+7	spongebob and patrick were waiting . the line was long .
+9	spongebob and patrick were in art class . the line was long .

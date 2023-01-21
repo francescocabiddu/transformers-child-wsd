@@ -1,0 +1,10 @@
+{"gold": "chicken_food", "idx": 0, "matches": [["chicken_food", 0.5728247165679932], ["chicken_animal", 0.4874303340911865]], "tokens": ["olivia", "had", "some", "chips", ".", "then", ",", "she", "saw", "the", "chicken", "."]}
+{"gold": "chicken_food", "idx": 1, "matches": [["chicken_food", 0.5913856625556946], ["chicken_animal", 0.48586809635162354]], "tokens": ["olivia", "had", "some", "chips", ".", "then", ",", "she", "ate", "the", "chicken", "."]}
+{"gold": "chicken_animal", "idx": 2, "matches": [["chicken_food", 0.5755112171173096], ["chicken_animal", 0.4939142167568207]], "tokens": ["olivia", "had", "some", "chips", ".", "then", ",", "she", "rescued", "the", "chicken", "."]}
+{"gold": "chicken_food", "idx": 3, "matches": [["chicken_food", 0.5797028541564941], ["chicken_animal", 0.4957718253135681]], "tokens": ["she", "saw", "the", "chicken", "."]}
+{"gold": "chicken_food", "idx": 4, "matches": [["chicken_food", 0.6302685141563416], ["chicken_animal", 0.5196840167045593]], "tokens": ["she", "ate", "the", "chicken", "."]}
+{"gold": "chicken_animal", "idx": 5, "matches": [["chicken_food", 0.6069896221160889], ["chicken_animal", 0.5191054344177246]], "tokens": ["she", "rescued", "the", "chicken", "."]}
+{"gold": "chicken_animal", "idx": 6, "matches": [["chicken_food", 0.5330252051353455], ["chicken_animal", 0.451168954372406]], "tokens": ["barney", "was", "on", "vacation", ".", "he", "fed", "a", "chicken", ",", "which", "was", "fun", "."]}
+{"gold": "chicken_food", "idx": 7, "matches": [["chicken_food", 0.5244069695472717], ["chicken_animal", 0.450506329536438]], "tokens": ["barney", "was", "on", "vacation", ".", "he", "roasted", "a", "chicken", ",", "which", "was", "fun", "."]}
+{"gold": "chicken_animal", "idx": 8, "matches": [["chicken_food", 0.5286844372749329], ["chicken_animal", 0.4598104655742645]], "tokens": ["barney", "was", "playing", "at", "a", "farm", ".", "the", "chicken", "was", "nice", "."]}
+{"gold": "chicken_food", "idx": 9, "matches": [["chicken_food", 0.5195800065994263], ["chicken_animal", 0.4509090185165405]], "tokens": ["barney", "was", "at", "a", "supermarket", ".", "the", "chicken", "was", "nice", "."]}

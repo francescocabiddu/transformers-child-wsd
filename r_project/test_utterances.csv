@@ -1,0 +1,123 @@
+﻿study,experiment,condition,target,correct,value,id_target,utterance
+Cabiddu,a,control,band,band_music_group,0,13,"Sophia listened to some music . Then , she played in a band . "
+Cabiddu,a,control,bat,bat_object,0,11,"John threw the ball . Then , Mary swung the bat ."
+Cabiddu,a,control,nail,nail_object,0,16,"Wendy bought some tools and a piece of wood . Then , she got a nail ."
+Cabiddu,a,lexical,chicken,chicken_food,0,11,"Olivia had some chips . Then , she saw the chicken ."
+Cabiddu,a,lexical,bow,bow_weapon,0,11,"Jack got some arrows . Then , he made a bow ."
+Cabiddu,a,semantic,glasses,glasses_eye,1,13,"Julia and Beth wanted some milk . Then , Julia folded the glasses ."
+Cabiddu,a,semantic,line,line_geometry,1,16,"Leo and Mark were waiting for the bus . Then , Mark rubbed out the line ."
+Cabiddu,a,semantic,button,button_tech,1,13,"John was putting on a shirt . Then , he rang the button ."
+Cabiddu,a,semantic,letter,letter_alphabet,1,13,"Charlie got some stamps this morning . Then , he sang the letters ."
+Cabiddu,a,control,chicken,chicken_food,0,11,"Olivia had some chips . Then , she ate the chicken ."
+Cabiddu,a,control,bow,bow_weapon,0,11,"Jack got some arrows . Then , he shot a bow ."
+Cabiddu,a,lexical,glasses,glasses_drinking,0,13,"Julia and Beth wanted some milk . Then , Julia found the glasses ."
+Cabiddu,a,lexical,line,line_order,0,15,"Leo and Mark were waiting for the bus . Then , Mark followed the line ."
+Cabiddu,a,lexical,button,button_clothing,0,13,"John was putting on a shirt . Then , he touched the button ."
+Cabiddu,a,lexical,letter,letter_mail,0,14,"Charlie got some stamps this morning . Then , he looked for the letters ."
+Cabiddu,a,semantic,band,band_object,1,12,"Sophia listened to some music . Then , she twisted a band ."
+Cabiddu,a,semantic,bat,bat_animal,1,13,"John threw the ball . Then , Mary got bitten by the bat ."
+Cabiddu,a,semantic,nail,nail_body_part,1,17,"Wendy bought some tools and a piece of wood . Then , she chewed on a nail ."
+Cabiddu,a,control,glasses,glasses_drinking,0,13,"Julia and Beth wanted some milk . Then , Julia filled the glasses ."
+Cabiddu,a,control,line,line_order,0,16,"Leo and Mark were waiting for the bus . Then , Mark stood in the line ."
+Cabiddu,a,control,button,button_clothing,0,13,"John was putting on a shirt . Then , he undid the button ."
+Cabiddu,a,control,letter,letter_mail,0,13,"Charlie got some stamps this morning . Then , he posted the letters ."
+Cabiddu,a,lexical,band,band_music_group,0,12,"Sophia listened to some music . Then , she got a band ."
+Cabiddu,a,lexical,bat,bat_object,0,11,"John threw the ball . Then , Mary liked the bat ."
+Cabiddu,a,lexical,nail,nail_object,0,16,"Wendy bought some tools and a piece of wood . Then , she drew a nail ."
+Cabiddu,a,semantic,chicken,chicken_animal,1,11,"Olivia had some chips . Then , she rescued the chicken ."
+Cabiddu,a,semantic,bow,bow_knot,1,11,"Jack got some arrows . Then , he ironed a bow ."
+Cabiddu,b,control,band,band_music_group,0,5,She played in a band . 
+Cabiddu,b,control,bat,bat_object,0,4,Mary swung the bat .
+Cabiddu,b,control,nail,nail_object,0,4,She got a nail .
+Cabiddu,b,lexical,chicken,chicken_food,0,4,She saw the chicken .
+Cabiddu,b,lexical,bow,bow_weapon,0,4,He made a bow .
+Cabiddu,b,semantic,glasses,glasses_eye,1,4,Julia folded the glasses .
+Cabiddu,b,semantic,line,line_geometry,1,5,Mark rubbed out the line .
+Cabiddu,b,semantic,button,button_tech,1,4,He rang the button .
+Cabiddu,b,semantic,letter,letter_alphabet,1,4,He sang the letters .
+Cabiddu,b,control,chicken,chicken_food,0,4,She ate the chicken .
+Cabiddu,b,control,bow,bow_weapon,0,4,He shot a bow .
+Cabiddu,b,lexical,glasses,glasses_drinking,0,4,Julia found the glasses .
+Cabiddu,b,lexical,line,line_order,0,4,Mark followed the line .
+Cabiddu,b,lexical,button,button_clothing,0,4,He touched the button .
+Cabiddu,b,lexical,letter,letter_mail,0,5,He looked for the letters .
+Cabiddu,b,semantic,band,band_object,1,4,She twisted a band .
+Cabiddu,b,semantic,bat,bat_animal,1,6,Mary got bitten by the bat .
+Cabiddu,b,semantic,nail,nail_body_part,1,5,She chewed on a nail .
+Cabiddu,b,control,glasses,glasses_drinking,0,4,Julia filled the glasses .
+Cabiddu,b,control,line,line_order,0,5,Mark stood in the line .
+Cabiddu,b,control,button,button_clothing,0,4,He undid the button .
+Cabiddu,b,control,letter,letter_mail,0,4,He posted the letters .
+Cabiddu,b,lexical,band,band_music_group,0,4,She got a band .
+Cabiddu,b,lexical,bat,bat_object,0,4,Mary liked the bat .
+Cabiddu,b,lexical,nail,nail_object,0,4,She drew a nail .
+Cabiddu,b,semantic,chicken,chicken_animal,1,4,She rescued the chicken .
+Cabiddu,b,semantic,bow,bow_knot,1,4,He ironed a bow .
+Rabagliati,a,current,chicken,chicken_animal,1,9,"Barney was on vacation . He fed a chicken , which was fun ."
+Rabagliati,a,current,chicken,chicken_food,0,9,"Barney was on vacation . He roasted a chicken , which was fun ."
+Rabagliati,a,prior,chicken,chicken_animal,1,9,Barney was playing at a farm . The chicken was nice .
+Rabagliati,a,prior,chicken,chicken_food,0,8,Barney was at a supermarket . The chicken was nice .
+Rabagliati,a,current,fish,fish_animal,1,10,"Oscar was at the beach . He caught a fish , which was exciting ."
+Rabagliati,a,current,fish,fish_food,0,10,"Oscar was at the beach . He grilled a fish , which was exciting ."
+Rabagliati,a,prior,fish,fish_animal,1,8,Oscar was at the ocean . The fish was exciting .
+Rabagliati,a,prior,fish,fish_food,0,8,Oscar was at a restaurant . The fish was exciting .
+Rabagliati,a,current,lamb,lamb_animal,1,10,"Cookie Monster was in California . He petted a lamb , which was good ."
+Rabagliati,a,current,lamb,lamb_food,0,10,"Cookie Monster was in California . He barbecued a lamb , which was good ."
+Rabagliati,a,prior,lamb,lamb_animal,1,9,Cookie Monster was in a barn . The lamb was good .
+Rabagliati,a,prior,lamb,lamb_food,0,9,Cookie Monster was at a barbecue . The lamb was good .
+Rabagliati,a,current,turkey,turkey_animal,1,10,"Kermit was in the country . He heard a turkey , which was cool ."
+Rabagliati,a,current,turkey,turkey_food,0,10,"Kermit was in the country . He cooked a turkey , which was cool ."
+Rabagliati,a,prior,turkey,turkey_animal,1,8,Kermit was in the country . The turkey was cool .
+Rabagliati,a,prior,turkey,turkey_food,0,7,Kermit was having dinner . The turkey was cool .
+Rabagliati,a,current,glasses,glasses_eye,1,9,"Zoe was inside . She put on some glasses , which were pretty ."
+Rabagliati,a,current,glasses,glasses_drinking,0,9,"Zoe was inside . She filled up some glasses , which were pretty ."
+Rabagliati,a,prior,glasses,glasses_eye,1,7,Zoe was getting dressed . The glasses were pretty .
+Rabagliati,a,prior,glasses,glasses_drinking,0,7,Zoe was getting water . The glasses were pretty .
+Rabagliati,a,current,letter,letter_alphabet,1,10,"Bugs Bunny was at school . He said a letter , which was fun ."
+Rabagliati,a,current,letter,letter_mail,0,10,"Bugs Bunny was at school . He sent a letter , which was fun ."
+Rabagliati,a,prior,letter,letter_alphabet,1,8,Bugs Bunny was at school . The letter was fun .
+Rabagliati,a,prior,letter,letter_mail,0,10,Bugs Bunny was at the post office . The letter was fun .
+Rabagliati,a,current,button,button_tech,1,10,"Elmo was in his room . He pushed a button , which was easy ."
+Rabagliati,a,current,button,button_clothing,0,10,"Elmo was in his room . He undid a button , which was easy ."
+Rabagliati,a,prior,button,button_tech,1,8,Elmo turned on the music . The button was easy .
+Rabagliati,a,prior,button,button_clothing,0,9,Elmo was putting on a shirt . The button was easy .
+Rabagliati,a,current,bow,bow_weapon,0,8,"Dora was playing . She aimed the bow , which was difficult ."
+Rabagliati,a,current,bow,bow_knot,1,8,"Dora was playing . She tied the bow , which was difficult ."
+Rabagliati,a,prior,bow,bow_weapon,0,8,Charlie Brown was at camp . The bow was tough .
+Rabagliati,a,prior,bow,bow_knot,1,9,Charlie Brown was wrapping a present . The bow was tough .
+Rabagliati,a,current,line,line_order,0,11,"SpongeBob and Patrick were playing . They got in a line , which was fun ."
+Rabagliati,a,current,line,line_geometry,1,10,"SpongeBob and Patrick were playing . They drew a line , which was fun ."
+Rabagliati,a,prior,line,line_order,0,8,SpongeBob and Patrick were waiting . The line was long .
+Rabagliati,a,prior,line,line_geometry,1,10,SpongeBob and Patrick were in art class . The line was long .
+Rabagliati,a,current,card,card_playing,1,13,"Winnie and Piglet were in the kitchen . They played with some cards , which was nice ."
+Rabagliati,a,current,card,card_note,0,12,"Winnie and Piglet were in the kitchen . They wrote some cards , which was nice ."
+Rabagliati,a,prior,card,card_playing,1,10,Winnie and Piglet were playing a game . The cards were nice .
+Rabagliati,a,prior,card,card_note,0,9,Winnie and Piglet were reading messages . The cards were nice .
+Rabagliati,a,current,bat,bat_animal,1,8,"Snoopy was outside . He chased a bat , which was big ."
+Rabagliati,a,current,bat,bat_object,0,8,"Snoopy was outside . He swung a bat , which was big ."
+Rabagliati,a,prior,bat,bat_animal,1,8,Snoopy was reading about animals . The bat was big .
+Rabagliati,a,prior,bat,bat_object,0,7,Snoopy was watching sports . The bat was big .
+Rabagliati,a,current,nail,nail_body_part,1,10,"Dora was in her house . She painted a nail , which was fun ."
+Rabagliati,a,current,nail,nail_object,0,11,"Dora was in her house . She pulled out a nail , which was fun ."
+Rabagliati,a,prior,nail,nail_body_part,1,9,Dora was at the beauty salon . The nail was long .
+Rabagliati,a,prior,nail,nail_object,0,8,Dora was building a house . The nail was long .
+Rabagliati,a,current,band,band_object,1,10,"Dora was in her room . She stretched the band , which was cool ."
+Rabagliati,a,current,band,band_music_group,0,11,"Dora was in her room . She listened to the band , which was cool ."
+Rabagliati,a,prior,band,band_object,1,8,Dora looked in her drawer . The band was cool .
+Rabagliati,a,prior,band,band_music_group,0,7,Dora heard some music . The band was cool .
+Rabagliati,b,unassociated,band,band_object,1,19,"Elmo and his class were singing songs . The teacher could play music with anything , even a band ."
+Rabagliati,b,associated,band,band_music_group,0,18,"Elmo and his class were singing songs . The teacher played music with anyone , even a band ."
+Rabagliati,b,unassociated,band,band_object,1,35,"SpongeBob , Patrick , and Sandy were playing music . SpongeBob had a drum , and Patrick had a trumpet , but Sandy didn’t have a guitar , so she had to use a band ."
+Rabagliati,b,associated,band,band_music_group,0,35,"SpongeBob , Patrick , and Sandy were playing music . SpongeBob had a drum , and Patrick had a trumpet , but Sandy didn’t have a guitar , so she had to leave the band ."
+Rabagliati,b,associated,bat,bat_animal,1,21,"Daffy was camping in the woods . He was scared of the wild animals , so he yelled at the bat ."
+Rabagliati,b,unassociated,bat,bat_object,0,20,"Daffy was camping in the woods . He was scared of the wild animals , so he brought a bat ."
+Rabagliati,b,associated,bat,bat_animal,1,21,"Kermit was walking in a dark cave . He was nervous about the animals , because he saw a big bat ."
+Rabagliati,b,unassociated,bat,bat_object,0,21,"Kermit was walking in a dark cave . He was nervous about the animals , so he carried a big bat ."
+Rabagliati,b,associated,bow,bow_weapon,0,21,Zoe was given some arrows so that she could do target practice . They were wrapped up along with a bow .
+Rabagliati,b,unassociated,bow,bow_knot,1,20,Zoe was given some arrows so that she could do target practice . They were wrapped up in a bow .
+Rabagliati,b,associated,bow,bow_weapon,0,25,"Robin Hood aimed his arrows really well , and he won the target practice competition . He got a gold arrow tied to a bow ."
+Rabagliati,b,unassociated,bow,bow_knot,1,25,"Robin Hood aimed his arrows really well , and he won the target practice competition . He got a gold arrow tied with a bow ."
+Rabagliati,b,associated,letter,letter_mail,0,16,"Dora’s mom wrote a friendly note to her teacher , and then she signed the letter ."
+Rabagliati,b,unassociated,letter,letter_alphabet,1,18,"Dora’s mom wrote a friendly note to her teacher , and then she signed it with a letter ."
+Rabagliati,b,associated,letter,letter_mail,0,18,"Barney was on holiday . He sent lots of postcards , and he only wrote a single letter ."
+Rabagliati,b,unassociated,letter,letter_alphabet,1,19,"Barney was on holiday . He sent lots of postcards , and on them he wrote a single letter ."

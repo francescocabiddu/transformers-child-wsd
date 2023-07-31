@@ -224,6 +224,9 @@ class TransformerEncoder():
             print(list_word_encodings)
             print(sum(list_word_encodings, []))
             print(complete_sentence['input_ids'][self.special_ids[0]:self.special_ids[1]])
+            print(sorted(sum(list_word_encodings, [])) != sorted(complete_sentence['input_ids'][self.special_ids[0]:self.special_ids[1]]))
+            print(sorted(sum(list_word_encodings, [])))
+            print(sorted(complete_sentence['input_ids'][self.special_ids[0]:self.special_ids[1]]))
             logging.fatal('ERROR: Tokens by word do not match raw tokenized sentence.\nDid you specify the correct special_ids?')
             return
 

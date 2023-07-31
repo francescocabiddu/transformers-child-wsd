@@ -1,0 +1,10 @@
+12	john was putting on a shirt . then , he rang the button .
+12	john was putting on a shirt . then , he touched the button .
+12	john was putting on a shirt . then , he undid the button .
+3	he rang the button .
+3	he touched the button .
+3	he undid the button .
+9	elmo was in his room . he pushed a button , which was easy .
+9	elmo was in his room . he undid a button , which was easy .
+7	elmo turned on the music . the button was easy .
+8	elmo was putting on a shirt . the button was easy .

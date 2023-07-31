@@ -1,0 +1,1 @@
+{"0": "bat_object", "1": "bat_animal"}

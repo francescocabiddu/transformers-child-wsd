@@ -1,0 +1,14 @@
+10	john threw the ball . then , mary swung the bat .
+12	john threw the ball . then , mary got bitten by the bat .
+10	john threw the ball . then , mary liked the bat .
+3	mary swung the bat .
+5	mary got bitten by the bat .
+3	mary liked the bat .
+7	snoopy was outside . he chased a bat , which was big .
+7	snoopy was outside . he swung a bat , which was big .
+7	snoopy was reading about animals . the bat was big .
+6	snoopy was watching sports . the bat was big .
+20	daffy was camping in the woods . he was scared of the wild animals , so he yelled at the bat .
+19	daffy was camping in the woods . he was scared of the wild animals , so he brought a bat .
+20	kermit was walking in a dark cave . he was nervous about the animals , because he saw a big bat .
+20	kermit was walking in a dark cave . he was nervous about the animals , so he carried a big bat .

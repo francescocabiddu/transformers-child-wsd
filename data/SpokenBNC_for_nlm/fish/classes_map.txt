@@ -1,0 +1,1 @@
+{"0": "fish_food", "1": "fish_animal"}

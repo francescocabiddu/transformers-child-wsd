@@ -1,0 +1,10 @@
+12	julia and beth wanted some milk . then , julia folded the glasses .
+12	julia and beth wanted some milk . then , julia found the glasses .
+12	julia and beth wanted some milk . then , julia filled the glasses .
+3	julia folded the glasses .
+3	julia found the glasses .
+3	julia filled the glasses .
+8	zoe was inside . she put on some glasses , which were pretty .
+8	zoe was inside . she filled up some glasses , which were pretty .
+6	zoe was getting dressed . the glasses were pretty .
+6	zoe was getting water . the glasses were pretty .

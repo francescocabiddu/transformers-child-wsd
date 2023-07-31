@@ -1,0 +1,14 @@
+10	jack got some arrows . then , he made a bow .
+10	jack got some arrows . then , he shot a bow .
+10	jack got some arrows . then , he ironed a bow .
+3	he made a bow .
+3	he shot a bow .
+3	he ironed a bow .
+7	dora was playing . she aimed the bow , which was difficult .
+7	dora was playing . she tied the bow , which was difficult .
+7	charlie brown was at camp . the bow was tough .
+8	charlie brown was wrapping a present . the bow was tough .
+20	zoe was given some arrows so that she could do target practice . they were wrapped up along with a bow .
+19	zoe was given some arrows so that she could do target practice . they were wrapped up in a bow .
+24	robin hood aimed his arrows really well , and he won the target practice competition . he got a gold arrow tied to a bow .
+24	robin hood aimed his arrows really well , and he won the target practice competition . he got a gold arrow tied with a bow .

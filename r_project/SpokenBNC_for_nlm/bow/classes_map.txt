@@ -1,0 +1,1 @@
+{"0": "bow_weapon", "1": "bow_knot"}

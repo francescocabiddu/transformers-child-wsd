@@ -1,0 +1,4 @@
+9	cookie monster was in california . he petted a lamb , which was good .
+9	cookie monster was in california . he barbecued a lamb , which was good .
+8	cookie monster was in a barn . the lamb was good .
+8	cookie monster was at a barbecue . the lamb was good .

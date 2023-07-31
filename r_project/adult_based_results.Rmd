@@ -1,0 +1,2989 @@
+---
+output:
+  html_document
+toc-title: 'Results - Models Using Adult-Based Sense Prototypes (Appendix S6)'
+
+---
+
+<!-- loading packages, user-defined functions and datasets -->
+```{r echo=FALSE, cache=FALSE, include=FALSE}
+lib <- c(
+  "ggpattern",
+  "beepr", 
+  "magrittr", 
+  "tidyverse",
+  "tokenizers",
+  "jsonlite",
+  "knitr",
+  "ggthemes",
+  "lme4",
+  "sjPlot",
+  "DHARMa"
+)
+
+lapply(lib, require, character.only = TRUE)
+rm(lib)
+
+load(file="ws_spokenbnc.RData")
+
+# load libraries and user-defined functions
+sapply(
+  c("requirements.R", "my_funs.R"),
+  source
+)
+
+model_input <-
+  read_csv("sense_frequencies_adults.csv")
+```
+
+<!-- additional functions/objects -->
+```{r eval=FALSE, echo=FALSE}
+# use this chunk when not loading ws above
+path_results <- str_replace(getwd(), "r_project$", "results/SpokenBNC_for_nlm/1nn")
+
+full_models <- list.dirs(path = path_results, full.names = FALSE) %>%
+  str_subset("_random|_downsample", negate = TRUE) %>%
+  {.[-1]}
+
+test_data <- read_csv("test_utterances.csv") %>%
+  mutate(utterance = utterance %>%
+           tolower)
+
+bert_output <- list()
+for (model_type in full_models) {
+  for (target_label in c("band", "bat", "bow", "button", "card",
+                         "chicken", "fish", "glasses", "lamb", "letter", "line",
+                         "nail"#, 
+                         #"turkey"
+                         )) {
+    output <- readLines(paste0(path_results, "/", model_type, "/",
+                               target_label, ".jsonl")) %>%
+      lapply(fromJSON) %>%
+      lapply(unlist) %>%
+      bind_rows %>%
+      unite("utterance", starts_with("tokens"), na.rm = TRUE,  sep = " ") %>% 
+      (function(df) {
+        df %>%
+          select(gold, utterance, matches1, matches3) %>%
+          rename(sense = matches1,
+                 cosine = matches3) %>%
+          rbind(
+            df %>%
+              select(gold, utterance, matches2, matches4) %>%
+              rename(sense = matches2,
+                     cosine = matches4)
+          )
+      }) %>%
+      mutate(utterance = utterance %>%
+               str_replace_all("<92>", "’")) %>%
+      left_join(., test_data, by = "utterance") %>%
+      mutate(model = model_type) %>%
+      arrange(model_type, study, experiment, condition, utterance) 
+    
+    bert_output %<>%
+      c(list(output))
+  }
+}
+
+bert_output %<>%
+  bind_rows %>%
+  mutate(sample = 1) %>%
+  mutate(model_type = "full")
+
+models_names <- c("distilbert-base-uncased","bert-base-uncased", "bert-large-uncased", "bert-large-uncased-whole-word-masking",
+             "distilroberta-base","roberta-base", "roberta-large",
+             
+             "roberta-med-small-1M-2", "roberta-base-10M-2", "roberta-base-100M-2", "roberta-base-1B-3",
+      
+            "albert-base-v1", "albert-large-v1", "albert-xlarge-v1", "albert-xxlarge-v1",
+            "albert-base-v2", "albert-large-v2", "albert-xlarge-v2",  "albert-xxlarge-v2", 
+            
+            "deberta-base", "deberta-large", "deberta-xlarge",
+            "deberta-v2-xlarge", "deberta-v2-xxlarge", 
+            "deberta-v3-small", "deberta-v3-base", "deberta-v3-large",
+            
+            "babyberta-ao-childes", "babyberta-ao-newsela", "babyberta-wikipedia-1",
+            "babyberta-ao-childes-ao-newselsa-wikipedia-1", 
+            
+            "distilgpt2","openai-gpt", "gpt2", "gpt2-medium", "gpt2-large", "gpt2-xl",
+            
+            "transfo-xl-wt103",
+            
+            "ctrl", 
+            
+            "t5-small", "t5-base", "t5-large",
+            
+            "xlnet-base-cased", "xlnet-large-cased",
+            
+            "elmo"
+            )
+
+family_codes <- tibble(
+  models = models_names) %>%
+  mutate(size = c(66, 110, 340, 340, # bert
+                  82, 125, 355, # roberta
+                  45, 125, 125, 125, # minibertas
+                  11, 17, 58, 223, # albert v1
+                  11, 17, 58, 223, # albert v2
+                  140, 400, 750, # deberta 
+                  900, 1500, # deberta v2
+                  141, 184, 434, # deberta v3
+                  8,8,8,8, # babyberta
+                  82, 116, 124, 355, 774, 1558, # gpt
+                  284, # transfo-xl
+                  1630, # ctrl
+                  35, 110, 335, # t5
+                  117, 360, # xlnet
+                  93 # elmo
+                  )) %>%
+  mutate(pretraining =
+    c(16, 16, 16, 16, # bert
+      40, 160, 160, # roberta
+      .005, .05, .5, 5, # minibertas
+      16, 16, 16, 16, # albert v1
+      16, 16, 16, 16, # albert v2
+      80, 80, 80, # deberta 
+      160, 160, # deberta v2
+      160, 160, 160, # deberta v3
+      .02,.02,.02,.06, # babyberta
+      40, 3, 40, 40, 40, 40, # gpt
+      .4, # transfo-xl
+      140, # ctrl
+      806, 806, 806, # t5
+      126, 126, # xlnet
+      4.2 # elmo
+  )) %>%
+  mutate(family = case_when(
+    str_detect(models, "^bert-") ~ "bert",
+    str_detect(models, "^roberta-") ~ "roberta",
+    str_detect(models, "^albert-.*-v1") ~ "albert-v1",
+    str_detect(models, "^albert-.*-v2") ~ "albert-v2",
+    str_detect(models, "^deberta.*2") ~ "deberta-v2",
+    str_detect(models, "^deberta.*3") ~ "deberta-v3",
+    str_detect(models, "^deberta[^23]+") ~ "deberta",
+    str_detect(models, "^babyberta-") ~ "babyberta",
+    str_detect(models, "^gpt|-gpt") ~ "gpt",
+    str_detect(models, "^transfo-xl") ~ "transfo-xl",
+    str_detect(models, "^ctrl") ~ "ctrl",
+    str_detect(models, "^t5-") ~ "t5",
+    str_detect(models, "^xlnet-") ~ "xlnet",
+    str_detect(models, "^distilbert") ~ "bert",
+    str_detect(models, "^distilroberta") ~ "roberta",
+    str_detect(models, "^distilgpt2") ~ "gpt",
+    str_detect(models, "^elmo") ~ "elmo",
+  ))
+
+full_model_levels <- 
+  models_names %>%
+  rev
+
+family_levels <- c("bert", "albert-v1", "albert-v2", "roberta", "deberta", "deberta-v2", "deberta-v3",
+                   "babyberta", "gpt", "transfo-xl", "ctrl", "t5", "xlnet", "elmo")
+
+round_anova <- function(df_comparison) {
+  df_comparison %>%
+    (function(df) {
+    df[,-ncol(df)] %>%
+      mutate_all(round, 2) %>%
+      cbind(
+        df[,ncol(df), drop = FALSE] %>%
+          mutate_all(round, 3)
+      )
+  })
+} 
+```
+
+<!-- save plots to folder -->
+```{r opts, echo = FALSE}
+knitr::opts_chunk$set(
+  fig.path = "images/"
+)
+```
+
+\newline
+
+Table. Sense frequency distributions in adult tagged utterances.
+
+```{r family codes, echo = FALSE}
+model_input %>%
+  kable
+```
+
+\newline
+
+```{r palette, echo = FALSE}
+my_palette <- c(
+  "#000000", # bert
+  "#4FC601", # albert v1
+  "#008941", # albert v2
+  "#FFFF00", # roberta
+  "#FFDBE5", # deberta
+  "#FF4A46", # deberta v2
+  "#A30059", # deberta v3
+  "#1CE6FF", # babyberta 
+  "#0000A6", # gpt
+  "#FF34FF", # transfo-xl
+  "#6b2a0a", # ctrl
+  "#f57402", # t5
+  "#848385", # xlnet
+  "#7e98f7", # elmo
+  "#63FFAC",
+  "#B79762",
+  "#004D43",
+  "#8FB0FF",
+  "#997D87",
+  "#5A0007",
+  "#809693",
+  "#FEFFE6",
+  "#1B4400",
+  "#3B5DFF",
+  "#4A3B53",
+  "#FF2F80",
+  "#61615A",
+  "#BA0900",
+  "#6B7900",
+  "#00C2A0",
+  "#FFAA92",
+  "#006FA6",
+  "#FF90C9",
+  "#FF913F",
+  "#B903AA",
+  "#D16100",
+  "#DDEFFF",
+  "#000035",
+  "#7B4F4B",
+  "#A1C299",
+  "#300018",
+  "#FFB500",
+  "#0AA6D8",
+  "#013349",
+  "#00846F",
+  "#372101",
+  "#C2FFED",
+  "#A079BF",
+  "#CC0744",
+  "#C0B9B2",
+  "#C2FF99",
+  "#001E09",
+  "#00489C",
+  "#6F0062",
+  "#0CBD66",
+  "#EEC3FF",
+  "#456D75",
+  "#B77B68",
+  "#7A87A1",
+  "#788D66",
+  "#885578",
+  "#FAD09F",
+  "#FF8A9A",
+  "#D157A0",
+  "#BEC459",
+  "#456648",
+  "#0086ED",
+  "#886F4C",
+  "#34362D",
+  "#B4A8BD",
+  "#00A6AA",
+  "#452C2C",
+  "#636375",
+  "#A3C8C9",
+  "#938A81",
+  "#575329"
+)
+
+```
+
+\newline
+
+```{r echo=FALSE, fig.width = 14, fig.height=7, dpi=300}
+# approximate maximum differences in Dominant sense selections in children (Rabagliati et al., 2013; Experiment 1)
+current_sentence_primary_plausible <- c(95, 68, 80) %>% mean %>% round(0)
+current_sentence_subordinate_plausible <- c(25, 18, 70) %>% mean %>% round(0)
+
+prior_sentence_primary_plausible <- c(89, 68, 80) %>% mean %>% round(0)
+prior_sentence_subordinate_plausible <- c(44, 26, 30) %>% mean %>% round(0)
+```
+
+```{r rabagliati_1_full_plots, echo=FALSE, fig.width = 17, fig.height=18, dpi=300}
+# Rabagliati - no competition
+bert_output %>%
+  mutate(value = case_when(
+    correct == "bow_weapon" ~ 1,
+    correct == "bow_knot" ~ 0,
+    correct == "line_order" ~ 1,
+    correct == "line_geometry" ~ 0,
+    TRUE ~ value
+  )) %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>% 
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(correct = case_when(
+    correct == "subordinate" ~ "Subordinate\nplausible",
+    correct == "primary" ~ "Dominant\nplausible"
+  )) %>%  
+  mutate(model = factor(model),
+         condition = factor(condition),
+         correct = factor(correct),
+         resp = factor(resp)) %>% 
+  group_by(model, condition, correct, resp) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, correct, resp, fill = list(n= 0)) %>% 
+  group_by(model, condition, correct) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>%
+  filter(resp != "subordinate") %>%
+  rename(`Context-sense association` = correct) %>%
+  mutate(condition = str_to_title(condition) %>% 
+           str_replace("$", " context")) %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  
+  rbind(
+    tibble(model = "Children", condition = c(rep("Current context", 2), 
+                                             rep("Prior context", 2)), 
+           `Context-sense association` = rep(c("Dominant\nplausible", "Subordinate\nplausible"), 2),
+           resp = "primary", 
+           n = NA,
+           tot = NA, 
+           perc = c(current_sentence_primary_plausible, current_sentence_subordinate_plausible,
+                    prior_sentence_primary_plausible, prior_sentence_subordinate_plausible),
+           size = NA,
+           pretraining = NA,
+           family = "Children")
+  ) %>% 
+  mutate(model = factor(model, levels = c(full_model_levels, "Children"))) %>%  
+  mutate(family = factor(family, levels = c(family_levels, "Children"))) %>% 
+  ggplot(aes(x = model, y = perc, pattern = `Context-sense association`, fill = family)) +
+  geom_bar_pattern(stat = "identity", alpha = 0.5, width = .5,
+    position = position_dodge(preserve = "single"),
+     color = "black", 
+     pattern_fill = "black",
+     pattern_angle = 45,
+                   pattern_density = 0.1,
+                   pattern_spacing = 0.025,
+                   pattern_key_scale_factor = 0.6) +
+  facet_grid(~ condition, scales = "free_x") +
+  scale_y_continuous(limits = c(NA, 100), breaks = seq(0, 100, 25)) +
+  geom_hline(yintercept=50, linetype="dashed", size = 0.7) + 
+  labs(y = "Dominant sense selections (%)", x = " ", title = "Rabagliati et al. (2013) - Experiment 1\nAdult-based prototypes") +
+  coord_flip() +
+  theme_bw() +
+  scale_fill_manual(values = my_palette) +
+  guides(fill = "none") +
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=25, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=25),
+        strip.text = element_text(size=20),
+        legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=30, margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25))
+```
+
+\newline
+
+```{r rabagliati_2_full_plots, echo=FALSE, fig.width=17, fig.height=20, dpi=300}
+# approximate maximum differences in Dominant sense selections in children (Rabagliati et al., 2013; Experiment 2)
+# extracted from the paper's plots
+sentence_primary_plausible <- 39
+sentence_subordinate_plausible <- 21
+
+# Rabagliati - competition
+bert_output %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "b") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>%  
+  mutate(response = gold == sense) %>% 
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  arrange(model, experiment, utterance, condition) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         response = factor(response)) %>%  
+  group_by(model, condition, response, .drop = FALSE) %>% 
+  summarise(n = length(response)) %>% 
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>%
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  mutate(sense = case_when(
+    response == FALSE & condition == "associated" ~ "primary",
+    response == TRUE & condition == "unassociated" ~ "primary",
+    TRUE ~ "subordinate"
+  )) %>% 
+  filter(sense != "subordinate") %>% 
+  mutate(perc = case_when(
+    perc == 0 ~ 0.1,
+    TRUE ~ perc
+  )) %>%
+    mutate(condition = case_when(
+    condition == "associated" ~ "Subordinate\nplausible",
+    condition == "unassociated" ~ "Dominant\nplausible"
+  ) %>%
+  factor(levels = c("Subordinate\nplausible", "Dominant\nplausible"))) %>%
+  left_join(family_codes, by = c("model" = "models")) %>% 
+    rbind(
+    tibble(model = "Children", condition = c("Subordinate\nplausible", 
+                                             "Dominant\nplausible"), 
+           response = NA,
+           n = NA,
+           tot = NA, 
+           perc = c(sentence_subordinate_plausible, sentence_primary_plausible),
+           sense = "primary", 
+           size = NA,
+           pretraining = NA, 
+           family = "Children")
+  ) %>%
+  mutate(model = factor(model, levels = c(full_model_levels, "Children"))) %>%
+  rename(Condition = condition) %>%
+  mutate(family = factor(family, levels = c(family_levels, "Children"))) %>% 
+  
+  ggplot(aes(x = model, y = perc, pattern = Condition, fill = family)) +
+  geom_bar_pattern(stat = "identity", alpha = 0.5, width = .5,
+    position = position_dodge(preserve = "single"),
+     color = "black", 
+     pattern_fill = "black",
+     pattern_angle = 45,
+                   pattern_density = 0.1,
+                   pattern_spacing = 0.025,
+                   pattern_key_scale_factor = 0.6) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.15, width = .5) +
+  scale_y_continuous(limits = c(0, 100)) +
+  scale_fill_discrete()+
+  geom_hline(yintercept=50, linetype="dashed", size = 0.7)+ 
+  labs(y = "Dominant sense selections (%)", x = " ", title = "Rabagliati et al. (2013) - Experiment 2\nAdult-based prototypes") +
+  coord_flip() +
+  theme_bw() +
+  scale_fill_manual(values = my_palette) +
+  guides(fill = "none") +
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=25, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=25),
+        strip.text = element_text(size=20),
+        legend.key.size = unit(3,"line"),
+        legend.text = element_text(size = 30),
+        legend.title = element_text(size = 30),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=30, margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25))
+```
+\newline
+
+```{r echo=FALSE}
+cabiddu_control <- 26
+cabiddu_lexical <- 60
+cabiddu_semantic <- 62
+```
+
+```{r echo=FALSE, fig.width =17, fig.height=20, dpi=300}
+# Cabiddu competition
+bert_output %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Cabiddu", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>% mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(condition = str_to_title(condition)) %>%
+  mutate(model = factor(model),
+         condition = factor(condition),
+         resp = factor(resp)) %>% 
+  group_by(model, condition, resp, .drop = FALSE) %>%
+  summarise(n = length(resp)) %>% 
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>%  
+  filter(resp != "subordinate") %>%
+  mutate(perc = case_when(
+    perc == 0 ~ 0.2,
+    TRUE ~ perc
+  )) %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  rbind(
+    tibble(model = "Children", condition = c("Control", "Lexical", "Semantic"), 
+           resp = NA,
+           n = NA,
+           tot = NA, 
+           perc = c(cabiddu_control, cabiddu_lexical, cabiddu_semantic),
+           size = NA,
+           pretraining = NA, 
+           family = "Children")
+  ) %>%
+  mutate(model = factor(model, levels = c(full_model_levels, "Children"))) %>%
+  mutate(family = factor(family, levels = c(family_levels, "Children"))) %>% 
+  rename(Family = family) %>% 
+  rename(Condition = condition) %>%
+  mutate(Condition = factor(Condition, levels = c("Control", "Lexical", "Semantic"),
+                            labels = c("Control", "Verb-lexical", "Verb-event"))) %>%
+  
+  ggplot(aes(x = model, y = perc, pattern = Condition, fill = Family)) +
+  geom_bar_pattern(stat = "identity", alpha = 0.5, width = .5,
+    position = position_dodge(preserve = "single"),
+     color = "black", 
+     pattern_fill = "black",
+     pattern_angle = 45,
+                   pattern_density = 0.1,
+                   pattern_spacing = 0.025,
+                   pattern_key_scale_factor = 0.6) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.15, width = .5) +
+  #facet_grid(~ model, scales = "free_x") +
+  scale_y_continuous(limits = c(0, 100)) +
+  geom_hline(yintercept=50, linetype="dashed", size = 0.7)+ 
+  labs(y = "Dominant sense selections (%)", x = " ", title = "Cabiddu et al. (2022)\nAdult-based prototypes") +
+  coord_flip() +
+  theme_bw() +
+  scale_fill_manual(values = my_palette) +
+  guides(fill = "none") +
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=25, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=25),
+        strip.text = element_text(size=20),
+        legend.key.size = unit(3,"line"),
+        legend.text = element_text(size = 30),
+        legend.title = element_text(size = 30),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=30, margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25))
+```
+
+\newline
+
+<br>
+
+```{r eval= FALSE, echo = FALSE}
+path_results <- str_replace(getwd(), "r_project$", "results/SpokenBNC_for_nlm/1nn")
+
+full_models <- list.dirs(path = path_results, full.names = FALSE) %>%
+  str_subset("_random|_downsample", negate = TRUE) %>%
+  {.[-1]}
+
+test_data <- read_csv("test_utterances.csv") %>%
+  mutate(utterance = utterance %>%
+           tolower)
+
+bert_output <- list()
+for (model_type in full_models) {
+  for (target_label in c("band", "bat", "bow", "button", "card",
+                         "chicken", "fish", "glasses", "lamb", "letter", "line",
+                         "nail"#, 
+                         #"turkey"
+                         )) {
+    output <- readLines(paste0(path_results, "/", model_type, "/",
+                               target_label, ".jsonl")) %>%
+      lapply(fromJSON) %>%
+      lapply(unlist) %>%
+      bind_rows %>%
+      unite("utterance", starts_with("tokens"), na.rm = TRUE,  sep = " ") %>% 
+      (function(df) {
+        df %>%
+          select(gold, utterance, matches1, matches3) %>%
+          rename(sense = matches1,
+                 cosine = matches3) %>%
+          rbind(
+            df %>%
+              select(gold, utterance, matches2, matches4) %>%
+              rename(sense = matches2,
+                     cosine = matches4)
+          )
+      }) %>%
+      mutate(utterance = utterance %>%
+               str_replace_all("<92>", "’")) %>%
+      left_join(., test_data, by = "utterance") %>%
+      mutate(model = model_type) %>%
+      arrange(model_type, study, experiment, condition, utterance) 
+    
+    bert_output %<>%
+      c(list(output))
+  }
+}
+
+bert_output %<>%
+  bind_rows %>%
+  mutate(sample = 1) %>%
+  mutate(model_type = "full")
+
+bert_output %<>%
+  mutate(model = case_when(
+    model == "babyberta-ao-childes-ao-newselsa-wikipedia-1" ~ "babyberta-ao-childes-ao-newsela-wikipedia-1",
+    TRUE ~ model
+  ))
+
+# children's based dataset
+# use this chunk when not loading ws above
+path_results <- str_replace(getwd(), "r_project$", "results/ChiSense-12_for_nlm_extended/1nn")
+
+full_models <- list.dirs(path = path_results, full.names = FALSE) %>%
+  str_subset("_random|_downsample", negate = TRUE) %>%
+  {.[-1]}
+
+test_data <- read_csv("test_utterances.csv") %>%
+  mutate(utterance = utterance %>%
+           tolower)
+
+bert_output_child <- list()
+for (model_type in full_models) {
+  for (target_label in c("band", "bat", "bow", "button", "card",
+                         "chicken", "fish", "glasses", "lamb", "letter", "line",
+                         "nail", "turkey")) {
+    output <- readLines(paste0(path_results, "/", model_type, "/",
+                               target_label, ".jsonl")) %>%
+      lapply(fromJSON) %>%
+      lapply(unlist) %>%
+      bind_rows %>%
+      unite("utterance", starts_with("tokens"), na.rm = TRUE,  sep = " ") %>% 
+      (function(df) {
+        df %>%
+          select(gold, utterance, matches1, matches3) %>%
+          rename(sense = matches1,
+                 cosine = matches3) %>%
+          rbind(
+            df %>%
+              select(gold, utterance, matches2, matches4) %>%
+              rename(sense = matches2,
+                     cosine = matches4)
+          )
+      }) %>%
+      mutate(utterance = utterance %>%
+               str_replace_all("<92>", "’")) %>%
+      left_join(., test_data, by = "utterance") %>%
+      mutate(model = model_type) %>%
+      arrange(model_type, study, experiment, condition, utterance) 
+    
+    bert_output_child %<>%
+      c(list(output))
+  }
+}
+
+bert_output_child %<>%
+  bind_rows %>%
+  mutate(sample = 1) %>%
+  mutate(model_type = "full") %>%
+  mutate(age_group = "Child-directed speech")
+
+bert_output %<>%
+  mutate(age_group = "Adult-directed speech")
+
+bert_output %<>%
+  rbind(bert_output_child)
+
+models_names <- c("distilbert-base-uncased","bert-base-uncased", "bert-large-uncased", "bert-large-uncased-whole-word-masking",
+             "distilroberta-base","roberta-base", "roberta-large",
+             
+             "roberta-med-small-1M-2", "roberta-base-10M-2", "roberta-base-100M-2", "roberta-base-1B-3",
+      
+            "albert-base-v1", "albert-large-v1", "albert-xlarge-v1", "albert-xxlarge-v1",
+            "albert-base-v2", "albert-large-v2", "albert-xlarge-v2",  "albert-xxlarge-v2", 
+            
+            "deberta-base", "deberta-large", "deberta-xlarge",
+            "deberta-v2-xlarge", "deberta-v2-xxlarge", 
+            "deberta-v3-small", "deberta-v3-base", "deberta-v3-large",
+            
+            "babyberta-ao-childes", "babyberta-ao-newsela", "babyberta-wikipedia-1",
+            "babyberta-ao-childes-ao-newsela-wikipedia-1", 
+            
+            "distilgpt2","openai-gpt", "gpt2", "gpt2-medium", "gpt2-large", "gpt2-xl",
+            
+            "transfo-xl-wt103",
+            
+            "ctrl", 
+            
+            "t5-small", "t5-base", "t5-large",
+            
+            "xlnet-base-cased", "xlnet-large-cased",
+            
+            "elmo"
+            )
+
+family_codes <- tibble(
+  models = models_names) %>%
+  mutate(size = c(66, 110, 340, 340, # bert
+                  82, 125, 355, # roberta
+                  45, 125, 125, 125, # minibertas
+                  11, 17, 58, 223, # albert v1
+                  11, 17, 58, 223, # albert v2
+                  140, 400, 750, # deberta 
+                  900, 1500, # deberta v2
+                  141, 184, 434, # deberta v3
+                  8,8,8,8, # babyberta
+                  82, 116, 124, 355, 774, 1558, # gpt
+                  284, # transfo-xl
+                  1630, # ctrl
+                  35, 110, 335, # t5
+                  117, 360, # xlnet
+                  93 # elmo
+                  )) %>%
+  mutate(pretraining =
+    c(16, 16, 16, 16, # bert
+      40, 160, 160, # roberta
+      .005, .05, .5, 5, # minibertas
+      16, 16, 16, 16, # albert v1
+      16, 16, 16, 16, # albert v2
+      80, 80, 80, # deberta 
+      160, 160, # deberta v2
+      160, 160, 160, # deberta v3
+      .02,.02,.02,.06, # babyberta
+      40, 3, 40, 40, 40, 40, # gpt
+      .4, # transfo-xl
+      140, # ctrl
+      806, 806, 806, # t5
+      126, 126, # xlnet
+      4.2 # elmo
+  )) %>%
+  mutate(family = case_when(
+    str_detect(models, "^bert-") ~ "bert",
+    str_detect(models, "^roberta-") ~ "roberta",
+    str_detect(models, "^albert-.*-v1") ~ "albert-v1",
+    str_detect(models, "^albert-.*-v2") ~ "albert-v2",
+    str_detect(models, "^deberta.*2") ~ "deberta-v2",
+    str_detect(models, "^deberta.*3") ~ "deberta-v3",
+    str_detect(models, "^deberta[^23]+") ~ "deberta",
+    str_detect(models, "^babyberta-") ~ "babyberta",
+    str_detect(models, "^gpt|-gpt") ~ "gpt",
+    str_detect(models, "^transfo-xl") ~ "transfo-xl",
+    str_detect(models, "^ctrl") ~ "ctrl",
+    str_detect(models, "^t5-") ~ "t5",
+    str_detect(models, "^xlnet-") ~ "xlnet",
+    str_detect(models, "^distilbert") ~ "bert",
+    str_detect(models, "^distilroberta") ~ "roberta",
+    str_detect(models, "^distilgpt2") ~ "gpt",
+    str_detect(models, "^elmo") ~ "elmo",
+  ))
+
+
+full_model_levels <- 
+  models_names %>%
+  rev
+
+family_levels <- c("bert", "albert-v1", "albert-v2", "roberta", "deberta", "deberta-v2", "deberta-v3",
+                   "babyberta", "gpt", "transfo-xl", "ctrl", "t5", "xlnet", "elmo")
+
+round_anova <- function(df_comparison) {
+  df_comparison %>%
+    (function(df) {
+    df[,-ncol(df)] %>%
+      mutate_all(round, 2) %>%
+      cbind(
+        df[,ncol(df), drop = FALSE] %>%
+          mutate_all(round, 3)
+      )
+  })
+} 
+```
+
+```{r echo = FALSE,fig.width = 17, fig.height=8, dpi=300}
+load(file="ws_age_group_correct_responses.RData")
+
+overall_responses <- bert_output %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(!(study == "Cabiddu" & experiment == "b")) %>% 
+  group_by(age_group, model, study, experiment, condition, utterance) %>% 
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>%  
+  mutate(response = gold == sense) %>% 
+  group_by(age_group, model, study, experiment, condition) %>%
+  summarise(n = sum(response), tot = length(response)) %>%
+  ungroup %>%
+  mutate(perc = n / tot * 100) %>% 
+  mutate(experiment = case_when(
+    experiment == "a" ~ "Exp 1",
+    experiment == "b" ~ "Exp 2"
+  )) %>%
+  mutate(age_group = factor(age_group, levels = c("Child-directed speech","Adult-directed speech"))) %>%
+  mutate(condition = case_when(
+    condition == "lexical" ~ "verb-lexical",
+    condition == "semantic" ~ "verb-event",
+    TRUE ~ condition
+  )) %>%
+  mutate(study = factor(study, levels = c("Rabagliati", "Cabiddu")))
+
+overall_responses_summary <- bert_output %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(!(study == "Cabiddu" & experiment == "b")) %>% 
+  group_by(age_group, model, study, experiment, condition, utterance) %>% 
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>%  
+  mutate(response = gold == sense) %>% 
+  group_by(age_group, model, study, experiment, condition) %>%
+  summarise(n = sum(response), tot = length(response)) %>%
+  ungroup %>%
+  mutate(perc = n / tot * 100) %>% 
+  group_by(age_group, study, experiment, condition) %>%
+  summarise(mean_perc = mean(perc), sd_perc = sd(perc)) %>% 
+  ungroup %>% 
+  mutate(experiment = case_when(
+    experiment == "a" ~ "Exp 1",
+    experiment == "b" ~ "Exp 2"
+  )) %>%
+  mutate(age_group = factor(age_group, levels = c("Child-directed speech","Adult-directed speech"))) %>%
+  mutate(condition = case_when(
+    condition == "lexical" ~ "verb-lexical",
+    condition == "semantic" ~ "verb-event",
+    TRUE ~ condition
+  ))%>%
+  mutate(study = factor(study, levels = c("Rabagliati", "Cabiddu")))
+
+
+overall_responses_summary %>%
+  ggplot(aes(x=condition, y=mean_perc, fill=age_group)) +
+geom_jitter(data = overall_responses, aes(x=condition, y=perc, fill=age_group), 
+             position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.9), alpha = 0.2) +
+  geom_bar(stat="identity", position=position_dodge(), colour="black", alpha = 0.5) +
+  geom_errorbar(aes(ymin=mean_perc-sd_perc, ymax=mean_perc+sd_perc), width=0.2,
+                position=position_dodge(.9)) +
+  labs(x=" ", y="Correct responses (Mean %)", fill="Age Group", shape = "Age Group") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 20),
+        axis.text.y = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        legend.text = element_text(size = 20),
+        strip.text = element_text(size = 20),
+        axis.title = element_text(size = 20)) +
+  facet_wrap(~study*experiment, scales = "free_y") +
+  coord_flip()+ 
+ guides(fill = guide_legend(reverse = TRUE)) +
+  scale_fill_grey()
+
+```
+
+\newline
+
+```{r echo=FALSE, fig.width = 17, fig.height=8, dpi=300}
+plot_adult_model_size <-
+  bert_output %>%
+  filter(age_group == "Adult-directed speech") %>%
+  mutate(value = case_when(
+    correct == "bow_weapon" ~ 1,
+    correct == "bow_knot" ~ 0,
+    correct == "line_order" ~ 1,
+    correct == "line_geometry" ~ 0,
+    TRUE ~ value
+  )) %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "a"
+         ) %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>%
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(correct = case_when(
+    correct == "subordinate" ~ "Subordinate\nplausible",
+    correct == "primary" ~ "Dominant\nplausible"
+  )) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         correct = factor(correct),
+         resp = factor(resp)) %>% 
+  group_by(model,  resp) %>%
+  summarise(n = length(resp)) %>%
+  group_by(model) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>%
+  filter(resp != "subordinate") %>%
+  left_join(family_codes, by = c("model" = "models")) %>%
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>% 
+  (function(df) {
+    # by model size
+    new_levels <- df %>%
+      arrange(size) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  rename(Model = model)
+
+plot_child_model_size <-
+  bert_output %>%
+  filter(age_group == "Child-directed speech") %>%
+  mutate(value = case_when(
+    correct == "bow_weapon" ~ 1,
+    correct == "bow_knot" ~ 0,
+    correct == "line_order" ~ 1,
+    correct == "line_geometry" ~ 0,
+    TRUE ~ value
+  )) %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "a"
+         ) %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>%
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(correct = case_when(
+    correct == "subordinate" ~ "Subordinate\nplausible",
+    correct == "primary" ~ "Dominant\nplausible"
+  )) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         correct = factor(correct),
+         resp = factor(resp)) %>% 
+  group_by(model,  resp) %>%
+  summarise(n = length(resp)) %>%
+  group_by(model) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>%
+  filter(resp != "subordinate") %>%
+  left_join(family_codes, by = c("model" = "models")) %>%
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>% 
+  (function(df) {
+    # by model size
+    new_levels <- df %>%
+      arrange(size) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  rename(Model = model)
+
+plot_adult_pretraining <-
+  bert_output %>%
+  filter(age_group == "Adult-directed speech") %>%
+  mutate(value = case_when(
+    correct == "bow_weapon" ~ 1,
+    correct == "bow_knot" ~ 0,
+    correct == "line_order" ~ 1,
+    correct == "line_geometry" ~ 0,
+    TRUE ~ value
+  )) %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>%  
+  mutate(response = gold == sense) %>%
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(correct = case_when(
+    correct == "subordinate" ~ "Subordinate\nplausible",
+    correct == "primary" ~ "Dominant\nplausible"
+  )) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         correct = factor(correct),
+         resp = factor(resp)) %>% 
+  group_by(model,  resp) %>%
+  summarise(n = length(resp)) %>%
+  group_by(model) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>%
+  left_join(family_codes, by = c("model" = "models")) %>%  
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family) %>%
+  mutate(model = factor(model, levels = full_model_levels)) %>% 
+  (function(df) {
+    # by model size
+    new_levels <- df %>%
+      arrange(pretraining) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  rename(Model = model)
+
+plot_child_pretraining <-
+  bert_output %>%
+  filter(age_group == "Child-directed speech") %>%
+  mutate(value = case_when(
+    correct == "bow_weapon" ~ 1,
+    correct == "bow_knot" ~ 0,
+    correct == "line_order" ~ 1,
+    correct == "line_geometry" ~ 0,
+    TRUE ~ value
+  )) %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>%  
+  mutate(response = gold == sense) %>%
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(correct = case_when(
+    correct == "subordinate" ~ "Subordinate\nplausible",
+    correct == "primary" ~ "Dominant\nplausible"
+  )) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         correct = factor(correct),
+         resp = factor(resp)) %>% 
+  group_by(model,  resp) %>%
+  summarise(n = length(resp)) %>%
+  group_by(model) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>%
+  left_join(family_codes, by = c("model" = "models")) %>%  
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family) %>%
+  mutate(model = factor(model, levels = full_model_levels)) %>% 
+  (function(df) {
+    # by model size
+    new_levels <- df %>%
+      arrange(pretraining) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  rename(Model = model)
+
+# Rabagliati - no competition dominant SENSE ~ MODEL SIZE
+gridExtra::grid.arrange(
+  plot_adult_model_size %>% 
+
+    
+  ggplot(aes(x = log(size), y = perc)) +
+      geom_hline(yintercept=69, linetype="dashed", size = 0.7)+ 
+  geom_smooth(method = "lm", se = TRUE, colour = "black", size = 2, linetype = "dashed") +
+    geom_point(aes(colour = Family), size = 5, alpha = 0.5) +
+  geom_smooth(aes(colour = Family), method = "lm", se = FALSE) +
+    geom_smooth(data = plot_child_model_size, method = "lm", se = TRUE, colour = "black", size = 2, linetype = "solid") +
+
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(y = "Dominant sense selections (%)", x = "Model size (log million parameters)") +
+  theme_bw() +
+  scale_colour_manual(values = my_palette) +
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=12, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=15),
+        strip.text = element_text(size=15),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 20),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=20, margin = margin(t = 15, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25)),
+  
+  
+# Rabagliati - no competition dominant SENSE ~ PRETRAINING SIZE
+ 
+plot_adult_pretraining%>% 
+ 
+  ggplot(aes(x = log(pretraining), y = perc)) +
+    geom_hline(yintercept=69, linetype="dashed", size = 0.7)+ 
+  geom_smooth(method = "lm", se = TRUE, colour = "black", size = 2, linetype = "dashed") +
+  geom_point(aes(colour = Family), size = 5, alpha = 0.5) +
+  scale_y_continuous(limits = c(0, 100)) +
+  geom_smooth(data = plot_child_pretraining, method = "lm", se = TRUE, colour = "black", size = 2, linetype = "solid") +
+  labs(y = "Dominant sense selections (%)", x = "Pretraining size (log GB)") +
+  theme_bw() +
+  scale_colour_manual(values = my_palette) +
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=12, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=15),
+        strip.text = element_text(size=15),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 20),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=20, margin = margin(t = 15, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25)),
+
+  ncol = 2
+)
+
+
+```
+
+\newline
+
+```{r dominant_preference_predict, echo=FALSE}
+mod_data <- 
+  bert_output %>%
+  mutate(value = case_when(
+    correct == "bow_weapon" ~ 1,
+    correct == "bow_knot" ~ 0,
+    correct == "line_order" ~ 1,
+    correct == "line_geometry" ~ 0,
+    TRUE ~ value
+  )) %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "a") %>% 
+  group_by(age_group, model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>%  
+  mutate(response = gold == sense) %>%
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(correct = case_when(
+    correct == "subordinate" ~ "Subordinate\nplausible",
+    correct == "primary" ~ "Dominant\nplausible"
+  )) %>% 
+  mutate(age_group = factor(age_group), 
+         model = factor(model),
+         condition = factor(condition),
+         correct = factor(correct),
+         resp = factor(resp)) %>%
+  group_by(age_group, model,  resp) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(age_group, model, resp, fill = list(n= 0)) %>%
+  group_by(age_group, model) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  rename(`model size` = size,
+         `pretraining size` = pretraining)
+
+```
+
+```{r echo = FALSE}
+  # LINEAR MIXED-EFFECT MODELs
+`Null model` <-  lmer(perc ~  1 + (1|family), data = mod_data)
+
+`+ Age group` <-  lmer(perc ~  age_group + (1|family), data = mod_data)
+
+`+ Pretraining` <- lmer(perc ~  age_group + log(`pretraining size`) + (1|family), data = mod_data)
+
+`+ Model size` <- lmer(perc ~  age_group + log(`model size`) + log(`pretraining size`) + (1|family), data = mod_data)
+
+`+ Age group x Model size` <- lmer(perc ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (1|family), data = mod_data)
+
+`+ Age group x Pretraining` <- lmer(perc ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (1|family), data = mod_data)
+
+`+ Pretraining x Model size` <- lmer(perc ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (log(`pretraining size`) * log(`model size`)) +(1|family), data = mod_data)
+
+`+ Age group x Pretraining x Model size` <- lmer(perc ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (log(`pretraining size`) * log(`model size`)) + (age_group * log(`pretraining size`) * log(`model size`)) + (1|family), data = mod_data)
+
+anova(`Null model`,
+      `+ Age group`,
+      `+ Pretraining`,
+      `+ Model size`,
+      `+ Age group x Model size`,
+      `+ Age group x Pretraining`,
+      `+ Pretraining x Model size`,
+      `+ Age group x Pretraining x Model size`
+      ) %>% 
+  round_anova %>%
+  kable
+```
+
+\newline
+
+```{r echo = FALSE}
+tab_model( `+ Age group x Pretraining`, dv.labels = "Dominant Sense Preference<br>'+ Age group * Pretraining' Model")
+```
+
+\newline
+
+```{r echo=FALSE}
+# approximate maximum differences in primary sense selections in children (Rabagliati et al., 2013; Experiment 1)
+current_sentence_primary_plausible <- c(95, 68, 80) %>% mean %>% round(0)
+current_sentence_subordinate_plausible <- c(25, 18, 70) %>% mean %>% round(0)
+
+prior_sentence_primary_plausible <- c(89, 68, 80) %>% mean %>% round(0)
+prior_sentence_subordinate_plausible <- c(44, 26, 30) %>% mean %>% round(0)
+```
+
+```{r echo=FALSE, fig.width = 17, fig.height=8, dpi=300}
+plot_adult <- bert_output %>%
+  filter(age_group == "Adult-directed speech") %>%
+  mutate(value = case_when(
+    correct == "bow_weapon" ~ 1,
+    correct == "bow_knot" ~ 0,
+    correct == "line_order" ~ 1,
+    correct == "line_geometry" ~ 0,
+    TRUE ~ value
+  )) %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>%
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(correct = case_when(
+    correct == "subordinate" ~ "Subordinate\nplausible",
+    correct == "primary" ~ "Dominant\nplausible"
+  )) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         correct = factor(correct),
+         resp = factor(resp)) %>%
+  group_by(model, condition, 
+           correct, resp) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, correct, resp, fill = list(n= 0)) %>% 
+  group_by(model, condition, 
+           correct) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>%
+  mutate(perc = case_when(
+    condition == "current" & str_detect(correct, "Dominant") ~ (perc - current_sentence_primary_plausible)^2,
+    condition == "current" & str_detect(correct, "Subordinate") ~ (perc - current_sentence_subordinate_plausible)^2,
+    condition == "prior" & str_detect(correct, "Dominant") ~ (perc - prior_sentence_primary_plausible)^2,
+    condition == "prior" & str_detect(correct, "Subordinate") ~ (perc - prior_sentence_subordinate_plausible)^2
+  )) %>% 
+  group_by(model, condition) %>% 
+  summarise(primary_diff = sqrt(perc[which(str_detect(correct, "Dominant"))] + 
+              perc[which(str_detect(correct, "Subordinate"))])) %>%
+  ungroup %>%
+  mutate(condition = str_to_title(condition) %>%
+           str_replace("$", " context")) %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by model size
+    new_levels <- df %>%
+      arrange(size) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_child <- bert_output %>%
+  filter(age_group == "Child-directed speech") %>%
+  mutate(value = case_when(
+    correct == "bow_weapon" ~ 1,
+    correct == "bow_knot" ~ 0,
+    correct == "line_order" ~ 1,
+    correct == "line_geometry" ~ 0,
+    TRUE ~ value
+  )) %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>%
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(correct = case_when(
+    correct == "subordinate" ~ "Subordinate\nplausible",
+    correct == "primary" ~ "Dominant\nplausible"
+  )) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         correct = factor(correct),
+         resp = factor(resp)) %>%
+  group_by(model, condition, 
+           correct, resp) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, correct, resp, fill = list(n= 0)) %>% 
+  group_by(model, condition, 
+           correct) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>%
+  mutate(perc = case_when(
+    condition == "current" & str_detect(correct, "Dominant") ~ (perc - current_sentence_primary_plausible)^2,
+    condition == "current" & str_detect(correct, "Subordinate") ~ (perc - current_sentence_subordinate_plausible)^2,
+    condition == "prior" & str_detect(correct, "Dominant") ~ (perc - prior_sentence_primary_plausible)^2,
+    condition == "prior" & str_detect(correct, "Subordinate") ~ (perc - prior_sentence_subordinate_plausible)^2
+  )) %>% 
+  group_by(model, condition) %>% 
+  summarise(primary_diff = sqrt(perc[which(str_detect(correct, "Dominant"))] + 
+              perc[which(str_detect(correct, "Subordinate"))])) %>%
+  ungroup %>%
+  mutate(condition = str_to_title(condition) %>%
+           str_replace("$", " context")) %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by model size
+    new_levels <- df %>%
+      arrange(size) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_adult %>%
+  ggplot(aes(x = log(size), y = primary_diff)) +
+  geom_hline(yintercept=0, linetype="solid", size = 0.7) + 
+  geom_point(aes(colour = Family), size = 8, alpha = .7) +
+  geom_smooth(method = "lm", se = TRUE, colour = "black", size = 2, linetype = "dashed") +
+  geom_smooth(data = plot_child, method = "lm", se = TRUE, colour = "black", size = 2, linetype = "solid") +
+  geom_smooth(aes(colour = Family), method = "lm", se = FALSE) +
+  
+  facet_grid(~ condition, scales = "free_x") +
+  labs(y = "Euclidean Distance (Model vs. Children)", 
+       x = "Model size (log million parameters)") +
+  theme_bw() +
+  scale_colour_manual(values = my_palette) + 
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=25, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=25),
+        strip.text = element_text(size=20),
+        legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=20, margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25))
+```
+
+\newline
+
+```{r rabagliati_1_pretrainingsize_plots, echo=FALSE, fig.width = 17, fig.height=8, dpi=300}
+set.seed(1)
+plot_adult <- bert_output %>%
+  filter(age_group == "Adult-directed speech") %>%
+  mutate(value = case_when(
+    correct == "bow_weapon" ~ 1,
+    correct == "bow_knot" ~ 0,
+    correct == "line_order" ~ 1,
+    correct == "line_geometry" ~ 0,
+    TRUE ~ value
+  )) %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>%
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(correct = case_when(
+    correct == "subordinate" ~ "Subordinate\nplausible",
+    correct == "primary" ~ "Dominant\nplausible"
+  )) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         correct = factor(correct),
+         resp = factor(resp)) %>%
+  group_by(model, condition, 
+           correct, resp) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, correct, resp, fill = list(n= 0)) %>% 
+  group_by(model, condition, 
+           correct) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>%
+  mutate(perc = case_when(
+    condition == "current" & str_detect(correct, "Dominant") ~ (perc - current_sentence_primary_plausible)^2,
+    condition == "current" & str_detect(correct, "Subordinate") ~ (perc - current_sentence_subordinate_plausible)^2,
+    condition == "prior" & str_detect(correct, "Dominant") ~ (perc - prior_sentence_primary_plausible)^2,
+    condition == "prior" & str_detect(correct, "Subordinate") ~ (perc - prior_sentence_subordinate_plausible)^2
+  )) %>% 
+  group_by(model, condition) %>% 
+  summarise(primary_diff = sqrt(perc[which(str_detect(correct, "Dominant"))] + 
+              perc[which(str_detect(correct, "Subordinate"))])) %>%
+  ungroup %>%
+  mutate(condition = str_to_title(condition) %>%
+           str_replace("$", " context")) %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by pretraining size
+    new_levels <- df %>%
+      arrange(pretraining) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_child <- bert_output %>%
+  filter(age_group == "Child-directed speech") %>%
+  mutate(value = case_when(
+    correct == "bow_weapon" ~ 1,
+    correct == "bow_knot" ~ 0,
+    correct == "line_order" ~ 1,
+    correct == "line_geometry" ~ 0,
+    TRUE ~ value
+  )) %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>%
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(correct = case_when(
+    correct == "subordinate" ~ "Subordinate\nplausible",
+    correct == "primary" ~ "Dominant\nplausible"
+  )) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         correct = factor(correct),
+         resp = factor(resp)) %>%
+  group_by(model, condition, 
+           correct, resp) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, correct, resp, fill = list(n= 0)) %>% 
+  group_by(model, condition, 
+           correct) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>%
+  mutate(perc = case_when(
+    condition == "current" & str_detect(correct, "Dominant") ~ (perc - current_sentence_primary_plausible)^2,
+    condition == "current" & str_detect(correct, "Subordinate") ~ (perc - current_sentence_subordinate_plausible)^2,
+    condition == "prior" & str_detect(correct, "Dominant") ~ (perc - prior_sentence_primary_plausible)^2,
+    condition == "prior" & str_detect(correct, "Subordinate") ~ (perc - prior_sentence_subordinate_plausible)^2
+  )) %>% 
+  group_by(model, condition) %>% 
+  summarise(primary_diff = sqrt(perc[which(str_detect(correct, "Dominant"))] + 
+              perc[which(str_detect(correct, "Subordinate"))])) %>%
+  ungroup %>%
+  mutate(condition = str_to_title(condition) %>%
+           str_replace("$", " context")) %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by pretraining size
+    new_levels <- df %>%
+      arrange(pretraining) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_adult %>%
+  ggplot(aes(x = log(pretraining), y = primary_diff)) +
+  geom_hline(yintercept=0, linetype="solid", size = 0.7) + 
+  geom_smooth(method = "lm", se = TRUE, colour = "black", size = 2, linetype = "dashed") +
+  geom_smooth(data = plot_child, method = "lm", se = TRUE, colour = "black", size = 2, linetype = "solid") +
+  geom_jitter(aes(colour = Family), size = 8, alpha = .6, height = 0.15) +
+  facet_grid(~ condition, scales = "free_x") +
+  labs(y = "Euclidean Distance (Model vs. Children)", 
+       x = "Pretraining size (log GB)") +
+  theme_bw() +
+  scale_colour_manual(values = my_palette) + 
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=25, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=25),
+        strip.text = element_text(size=20),
+        legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=20, margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25))
+```
+
+\newline
+
+```{r echo=FALSE}
+mod_data <- 
+  bert_output %>%
+  mutate(value = case_when(
+    correct == "bow_weapon" ~ 1,
+    correct == "bow_knot" ~ 0,
+    correct == "line_order" ~ 1,
+    correct == "line_geometry" ~ 0,
+    TRUE ~ value
+  )) %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "a") %>% 
+  group_by(age_group, model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>%
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(correct = case_when(
+    correct == "subordinate" ~ "Subordinate\nplausible",
+    correct == "primary" ~ "Dominant\nplausible"
+  )) %>% 
+  mutate(age_group = factor(age_group),
+         model = factor(model),
+         condition = factor(condition),
+         correct = factor(correct),
+         resp = factor(resp)) %>%
+  group_by(age_group, model, condition, 
+           correct, resp) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(age_group, model, condition, correct, resp, fill = list(n= 0)) %>% 
+  group_by(age_group, model, condition, 
+           correct) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>%
+  filter(resp != "subordinate") %>%
+  mutate(perc = case_when(
+    condition == "current" & str_detect(correct, "Dominant") ~ (perc - current_sentence_primary_plausible)^2,
+    condition == "current" & str_detect(correct, "Subordinate") ~ (perc - current_sentence_subordinate_plausible)^2,
+    condition == "prior" & str_detect(correct, "Dominant") ~ (perc - prior_sentence_primary_plausible)^2,
+    condition == "prior" & str_detect(correct, "Subordinate") ~ (perc - prior_sentence_subordinate_plausible)^2
+  )) %>% 
+  group_by(age_group, model, condition) %>% 
+  summarise(primary_diff = sqrt(perc[which(str_detect(correct, "Dominant"))] + 
+              perc[which(str_detect(correct, "Subordinate"))])) %>%
+  ungroup %>%
+  mutate(condition = str_to_title(condition) %>%
+           str_replace("$", " context")) %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  mutate(family = factor(family, levels = family_levels)) %>%
+  rename(`model size` = size,
+         `pretraining size` = pretraining)
+```
+
+
+```{r echo=FALSE}
+  # LINEAR MIXED-EFFECT MODELs
+`Null model` <-  lmer(primary_diff ~  1 + (1|family), data = mod_data)
+
+`+ Age group` <-  lmer(primary_diff ~  age_group + (1|family), data = mod_data)
+
+`+ Condition` <- lmer(primary_diff ~  age_group + condition + (1|family), data = mod_data)
+
+`+ Pretraining` <- lmer(primary_diff ~  age_group + condition + log(`pretraining size`) + (1|family), data = mod_data)
+
+`+ Model size` <- lmer(primary_diff ~  age_group + condition + log(`pretraining size`) + log(`model size`) + (1|family), data = mod_data)
+
+`+ Age group x Condition` <- lmer(primary_diff ~  age_group + condition + log(`model size`) + log(`pretraining size`) + (age_group * condition) + (1|family), data = mod_data)
+
+`+ Age group x Model size` <- lmer(primary_diff ~  age_group + condition + log(`model size`) + log(`pretraining size`) + (age_group * condition) + (age_group * log(`model size`)) + (1|family), data = mod_data)
+
+`+ Age group x Pretraining` <- lmer(primary_diff ~  age_group + condition + log(`model size`) + log(`pretraining size`) + (age_group * condition) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (1|family), data = mod_data)
+
+`+ Condition x Pretraining` <- lmer(primary_diff ~  age_group + condition + log(`model size`) + log(`pretraining size`) + (age_group * condition) + (age_group * log(`pretraining size`)) + (age_group * log(`model size`)) + (condition * log(`pretraining size`)) + (1|family), data = mod_data)
+
+`+ Condition x Model size` <- lmer(primary_diff ~  age_group + condition + log(`model size`) + log(`pretraining size`) + (age_group * condition) + (age_group * log(`pretraining size`)) + (age_group * log(`model size`)) + (condition * log(`pretraining size`)) +  (condition * log(`model size`)) + (1|family), data = mod_data)
+
+`+ Pretraining x Model size` <- lmer(primary_diff ~  age_group + condition + log(`model size`) + log(`pretraining size`) + (age_group * condition) + (age_group * log(`pretraining size`)) + (age_group * log(`model size`)) + (condition * log(`pretraining size`)) +  (condition * log(`model size`)) + (log(`pretraining size`) * log(`model size`)) + (1|family), data = mod_data)
+
+`+ Age group x Condition x Pretraining` <- lmer(primary_diff ~  age_group + condition + log(`model size`) + log(`pretraining size`) + (age_group * condition) + (age_group * log(`pretraining size`)) + (age_group * log(`model size`)) + (condition * log(`pretraining size`)) +  (condition * log(`model size`)) + (log(`pretraining size`) * log(`model size`)) + (age_group * condition * log(`pretraining size`)) + (1|family), data = mod_data)
+
+`+ Age group x Condition x Model size` <- lmer(primary_diff ~  age_group + condition + log(`model size`) + log(`pretraining size`) + (age_group * condition) + (age_group * log(`pretraining size`)) + (age_group * log(`model size`)) + (condition * log(`pretraining size`)) +  (condition * log(`model size`)) + (log(`pretraining size`) * log(`model size`)) + (age_group * condition * log(`pretraining size`)) + (age_group * condition * log(`model size`)) + (1|family), data = mod_data)
+
+`+ Age group x Pretraining x Model size` <- lmer(primary_diff ~  age_group + condition + log(`model size`) + log(`pretraining size`) + (age_group * condition) + (age_group * log(`pretraining size`)) + (age_group * log(`model size`)) + (condition * log(`pretraining size`)) +  (condition * log(`model size`)) + (log(`pretraining size`) * log(`model size`)) + (age_group * condition * log(`pretraining size`)) + (age_group * condition * log(`model size`)) + (age_group * log(`model size`) * log(`pretraining size`)) + (1|family), data = mod_data)
+
+anova(`Null model`,
+      `+ Age group`,
+      `+ Condition`,
+      `+ Pretraining`,
+      `+ Model size`,
+      `+ Age group x Condition`,
+      `+ Age group x Model size`,
+      `+ Age group x Pretraining`,
+      `+ Condition x Pretraining`,
+      `+ Condition x Model size`,
+      `+ Pretraining x Model size`,
+      `+ Age group x Condition x Pretraining`,
+      `+ Age group x Condition x Model size`,
+      `+ Age group x Pretraining x Model size`
+      ) %>% 
+  round_anova %>%
+  kable
+```
+
+\newline
+
+```{r echo= FALSE}
+tab_model(`+ Condition x Model size`, dv.labels = "+ Condition x Model size model<br>Rabagliati et al. (2013) - experiment 1")
+
+## DIAGNOSTICS
+# simulate residuals
+#simulationOutput <- simulateResiduals(fittedModel = `+ Condition x Model size`, plot = F)
+
+# qqplot and residual plots
+#plot(simulationOutput, quantreg = T)
+
+# check uniformity, dispersion and outliers (no bootstrap)
+#testResiduals(simulationOutput)
+
+# check outliers
+#testOutliers(simulationOutput,  type = "bootstrap")
+
+# check inflation
+#testZeroInflation(simulationOutput)
+#countOnes <- function(x) sum(x == 1)  # testing for number of 1s
+#testGeneric(simulationOutput, summary = countOnes, alternative = "greater") # 1-inflation
+
+# plot residuals agaist individual predictors
+#plotResiduals(simulationOutput, log(mod_data$pretraining), quantreg = T)
+
+# residuals against random effect of id
+#simulationOutput = recalculateResiduals(simulationOutput , group = model_df2$id)
+#testDispersion(simulationOutput)
+
+#car::vif()
+
+```
+
+\newline
+
+```{r rabagliati_2_modelsize_pretrainingsize_plots, echo=FALSE, fig.width=17, fig.height=8, dpi=300}
+plot_adult_model_size <- 
+  bert_output %>%
+  filter(age_group == "Adult-directed speech") %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "b") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>%  
+  mutate(response = gold == sense) %>% 
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  arrange(model, experiment, utterance, condition) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         response = factor(response)) %>% 
+  group_by(model, condition, response, .drop = FALSE) %>%
+  summarise(n = length(response)) %>%
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>%
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  mutate(sense = case_when(
+    response == FALSE & condition == "associated" ~ "primary",
+    response == TRUE & condition == "unassociated" ~ "primary",
+    TRUE ~ "subordinate"
+  )) %>% 
+  filter(sense != "subordinate") %>%
+  mutate(condition = case_when(
+    condition == "associated" ~ "Subordinate\nplausible",
+    condition == "unassociated" ~ "Dominant\nplausible"
+  ) %>%
+  factor(levels = c("Subordinate\nplausible", "Dominant\nplausible"))) %>%  
+  mutate(perc = case_when(
+      condition == "Subordinate\nplausible" ~ (perc - sentence_subordinate_plausible)^2,
+      condition == "Dominant\nplausible" ~ (perc - sentence_primary_plausible)^2
+    )) %>% 
+  group_by(model) %>%
+  summarise(primary_diff = sqrt(perc[which(str_detect(condition, "Dominant"))] +
+              perc[which(str_detect(condition, "Subordinate"))])) %>%
+  ungroup %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by model size
+    new_levels <- df %>%
+      arrange(size) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+   mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_child_model_size <- 
+  bert_output %>%
+  filter(age_group == "Child-directed speech") %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "b") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>%  
+  mutate(response = gold == sense) %>% 
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  arrange(model, experiment, utterance, condition) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         response = factor(response)) %>% 
+  group_by(model, condition, response, .drop = FALSE) %>%
+  summarise(n = length(response)) %>%
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>%
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  mutate(sense = case_when(
+    response == FALSE & condition == "associated" ~ "primary",
+    response == TRUE & condition == "unassociated" ~ "primary",
+    TRUE ~ "subordinate"
+  )) %>% 
+  filter(sense != "subordinate") %>%
+  mutate(condition = case_when(
+    condition == "associated" ~ "Subordinate\nplausible",
+    condition == "unassociated" ~ "Dominant\nplausible"
+  ) %>%
+  factor(levels = c("Subordinate\nplausible", "Dominant\nplausible"))) %>%  
+  mutate(perc = case_when(
+      condition == "Subordinate\nplausible" ~ (perc - sentence_subordinate_plausible)^2,
+      condition == "Dominant\nplausible" ~ (perc - sentence_primary_plausible)^2
+    )) %>% 
+  group_by(model) %>%
+  summarise(primary_diff = sqrt(perc[which(str_detect(condition, "Dominant"))] +
+              perc[which(str_detect(condition, "Subordinate"))])) %>%
+  ungroup %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by model size
+    new_levels <- df %>%
+      arrange(size) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+   mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_adult_pretraining <-
+  # Rabagliati - competition
+bert_output %>%
+  filter(age_group == "Adult-directed speech") %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "b") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>%  
+  mutate(response = gold == sense) %>% 
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  arrange(model, experiment, utterance, condition) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         response = factor(response)) %>% 
+  group_by(model, condition, response, .drop = FALSE) %>%
+  summarise(n = length(response)) %>%
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>%
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  mutate(sense = case_when(
+    response == FALSE & condition == "associated" ~ "primary",
+    response == TRUE & condition == "unassociated" ~ "primary",
+    TRUE ~ "subordinate"
+  )) %>% 
+  filter(sense != "subordinate") %>%
+  mutate(condition = case_when(
+    condition == "associated" ~ "Subordinate\nplausible",
+    condition == "unassociated" ~ "Dominant\nplausible"
+  ) %>%
+  factor(levels = c("Subordinate\nplausible", "Dominant\nplausible"))) %>%  
+  mutate(perc = case_when(
+      condition == "Subordinate\nplausible" ~ (perc - sentence_subordinate_plausible)^2,
+      condition == "Dominant\nplausible" ~ (perc - sentence_primary_plausible)^2
+    )) %>% 
+  group_by(model) %>%
+  summarise(primary_diff = sqrt(perc[which(str_detect(condition, "Dominant"))] +
+              perc[which(str_detect(condition, "Subordinate"))])) %>%
+  ungroup %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by pretraining size
+    new_levels <- df %>%
+      arrange(pretraining) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+   mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_child_pretraining <-
+  # Rabagliati - competition
+bert_output %>%
+  filter(age_group == "Child-directed speech") %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "b") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>%  
+  mutate(response = gold == sense) %>% 
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  arrange(model, experiment, utterance, condition) %>% 
+  mutate(model = factor(model),
+         condition = factor(condition),
+         response = factor(response)) %>% 
+  group_by(model, condition, response, .drop = FALSE) %>%
+  summarise(n = length(response)) %>%
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>%
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  mutate(sense = case_when(
+    response == FALSE & condition == "associated" ~ "primary",
+    response == TRUE & condition == "unassociated" ~ "primary",
+    TRUE ~ "subordinate"
+  )) %>% 
+  filter(sense != "subordinate") %>%
+  mutate(condition = case_when(
+    condition == "associated" ~ "Subordinate\nplausible",
+    condition == "unassociated" ~ "Dominant\nplausible"
+  ) %>%
+  factor(levels = c("Subordinate\nplausible", "Dominant\nplausible"))) %>%  
+  mutate(perc = case_when(
+      condition == "Subordinate\nplausible" ~ (perc - sentence_subordinate_plausible)^2,
+      condition == "Dominant\nplausible" ~ (perc - sentence_primary_plausible)^2
+    )) %>% 
+  group_by(model) %>%
+  summarise(primary_diff = sqrt(perc[which(str_detect(condition, "Dominant"))] +
+              perc[which(str_detect(condition, "Subordinate"))])) %>%
+  ungroup %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by pretraining size
+    new_levels <- df %>%
+      arrange(pretraining) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+   mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+gridExtra::grid.arrange(
+# Rabagliati - competition
+ plot_adult_model_size%>%
+  
+  ggplot(aes(x = log(size), y = primary_diff)) +
+  geom_hline(yintercept=0, linetype="solid", size = 0.7) + 
+  geom_point(aes(colour = Family), size = 7, alpha = .5) +
+  geom_smooth(method = "lm", se = TRUE, colour = "black", size = 2, linetype = "dashed") +
+  geom_smooth(data = plot_child_model_size, method = "lm", se = TRUE, colour = "black", size = 2, linetype = "solid") +
+  geom_smooth(aes(colour = Family), method = "lm", se = FALSE) +
+  labs(y = "Euclidean Distance (Model vs. Children)", x = "Model size (log million parameters)") +
+  theme_bw() +
+  scale_colour_manual(values = my_palette) +
+  
+  scale_y_continuous(limits = c(0, NA)) +
+  
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=25, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=25),
+        strip.text = element_text(size=20),
+        legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=20, margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25)),
+
+plot_adult_pretraining %>% 
+  
+  ggplot(aes(x = log(pretraining), y = primary_diff)) +
+  geom_hline(yintercept=0, linetype="solid", size = 0.7) + 
+  geom_point(aes(colour = Family), size = 7, alpha = .7) +
+  geom_smooth(method = "lm", se = TRUE, colour = "black", size = 2, linetype = "dashed") +
+  geom_smooth(data = plot_child_pretraining, method = "lm", se = TRUE, colour = "black", size = 2, linetype = "solid") +
+  labs(y = "Euclidean Distance (Model vs. Children)", x = "Pretraining size (log GB)") +
+  theme_bw() +
+  scale_colour_manual(values = my_palette) +
+  
+  scale_y_continuous(limits = c(0, NA)) +
+  
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=25, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=25),
+        strip.text = element_text(size=20),
+        legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=20, margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25)),
+
+ncol = 2)
+```
+
+\newline
+
+```{r echo=FALSE}
+mod_data <- bert_output %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>% 
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Rabagliati", experiment == "b") %>% 
+  group_by(age_group, model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>%  
+  mutate(response = gold == sense) %>% 
+  mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  arrange(age_group, model, experiment, utterance, condition) %>% 
+  mutate(age_group = factor(age_group), model = factor(model),
+         condition = factor(condition),
+         response = factor(response)) %>% 
+  group_by(age_group, model, condition, response, .drop = FALSE) %>%
+  summarise(n = length(response)) %>%
+  group_by(age_group, model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>%
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  mutate(sense = case_when(
+    response == FALSE & condition == "associated" ~ "primary",
+    response == TRUE & condition == "unassociated" ~ "primary",
+    TRUE ~ "subordinate"
+  )) %>% 
+  filter(sense != "subordinate") %>%
+  mutate(condition = case_when(
+    condition == "associated" ~ "Subordinate\nplausible",
+    condition == "unassociated" ~ "Dominant\nplausible"
+  ) %>%
+  factor(levels = c("Subordinate\nplausible", "Dominant\nplausible"))) %>%  
+  mutate(perc = case_when(
+      condition == "Subordinate\nplausible" ~ (perc - sentence_subordinate_plausible)^2,
+      condition == "Dominant\nplausible" ~ (perc - sentence_primary_plausible)^2
+    )) %>% 
+  group_by(age_group, model) %>%
+  summarise(primary_diff = sqrt(perc[which(str_detect(condition, "Dominant"))] +
+              perc[which(str_detect(condition, "Subordinate"))])) %>%
+  ungroup %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+   mutate(family = factor(family, levels = family_levels))  %>%
+  rename(`model size` = size,
+         `pretraining size` = pretraining)
+```
+
+```{r echo=FALSE}
+  # LINEAR MIXED-EFFECT MODELs
+`Null model` <-  lmer(primary_diff ~  1 + (1|family), data = mod_data)
+
+`+ Age group` <-  lmer(primary_diff ~  age_group + (1|family), data = mod_data)
+
+`+ Pretraining` <- lmer(primary_diff ~  age_group + log(`pretraining size`) + (1|family), data = mod_data)
+
+`+ Model size` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (1|family), data = mod_data)
+
+`+ Age group x Model size` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (1|family), data = mod_data)
+
+`+ Age group x Pretraining` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (1|family), data = mod_data)
+
+`+ Pretraining x Model size` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (log(`pretraining size`) * log(`model size`)) +(1|family), data = mod_data)
+
+`+ Age group x Pretraining x Model size` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (log(`pretraining size`) * log(`model size`)) + (age_group * log(`pretraining size`) * log(`model size`)) + (1|family), data = mod_data)
+
+anova(`Null model`,
+      `+ Age group`,
+      `+ Pretraining`,
+      `+ Model size`,
+      `+ Age group x Model size`,
+      `+ Age group x Pretraining`,
+      `+ Pretraining x Model size`,
+      `+ Age group x Pretraining x Model size`
+      ) %>% 
+  round_anova %>%
+  kable
+```
+
+\newline
+
+```{r echo = FALSE}
+tab_model(`+ Model size`, dv.labels = "+ Model size model<br>Rabagliati et al. (2013) - Experiment 2")
+
+## DIAGNOSTICS
+# simulate residuals
+#simulationOutput <- simulateResiduals(fittedModel = `Main effects`, plot = F)
+
+# qqplot and residual plots
+#plot(simulationOutput, quantreg = T)
+
+# check uniformity, dispersion and outliers (no bootstrap)
+#testResiduals(simulationOutput)
+
+# check outliers
+#testOutliers(simulationOutput,  type = "bootstrap")
+
+# check inflation
+#testZeroInflation(simulationOutput)
+#countOnes <- function(x) sum(x == 1)  # testing for number of 1s
+#testGeneric(simulationOutput, summary = countOnes, alternative = "greater") # 1-inflation
+
+# plot residuals agaist individual predictors
+#plotResiduals(simulationOutput, log(mod_data$size), quantreg = T)
+
+# residuals against random effect of id
+#simulationOutput = recalculateResiduals(simulationOutput , group = model_df2$id)
+#testDispersion(simulationOutput)
+
+#car::vif(`Main effects`)
+```
+
+
+\newline
+
+```{r echo=FALSE, fig.width =17, fig.height=20, dpi=300}
+cabiddu_control <- 26
+cabiddu_lexical <- 60
+cabiddu_semantic <- 62
+```
+
+\newline
+
+```{r echo=FALSE, fig.width =17, fig.height=8, dpi=300}
+plot_adult_model_size <- 
+  bert_output %>%
+  filter(age_group == "Adult-directed speech") %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Cabiddu", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>% mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(condition = str_to_title(condition)) %>%
+  mutate(model = factor(model),
+         condition = factor(condition),
+         resp = factor(resp)) %>%
+  group_by(model, condition, resp, .drop = FALSE) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, resp, fill = list(n= 0)) %>% 
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>% 
+    mutate(perc = case_when(
+    condition == "Control" ~ (perc - cabiddu_control)^2,
+    condition == "Lexical" ~ (perc - cabiddu_lexical)^2,
+    condition == "Semantic" ~ (perc - cabiddu_semantic)^2,
+  )) %>%  
+  group_by(model) %>% 
+  summarise(primary_diff = sqrt(
+    perc[which(condition == "Control")] +
+     # mean(
+    #    c(
+     #     perc[which(condition == "Lexical")]
+    #      ,
+           perc[which(condition == "Semantic")]
+    #      )
+     #   )
+              )) %>% 
+  ungroup %>%
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by model size
+    new_levels <- df %>%
+      arrange(size) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_child_model_size <- 
+  bert_output %>%
+  filter(age_group == "Child-directed speech") %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Cabiddu", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>% mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(condition = str_to_title(condition)) %>%
+  mutate(model = factor(model),
+         condition = factor(condition),
+         resp = factor(resp)) %>%
+  group_by(model, condition, resp, .drop = FALSE) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, resp, fill = list(n= 0)) %>% 
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>% 
+    mutate(perc = case_when(
+    condition == "Control" ~ (perc - cabiddu_control)^2,
+    condition == "Lexical" ~ (perc - cabiddu_lexical)^2,
+    condition == "Semantic" ~ (perc - cabiddu_semantic)^2,
+  )) %>%  
+  group_by(model) %>% 
+  summarise(primary_diff = sqrt(
+    perc[which(condition == "Control")] +
+     # mean(
+    #    c(
+     #     perc[which(condition == "Lexical")]
+    #      ,
+           perc[which(condition == "Semantic")]
+    #      )
+     #   )
+              )) %>% 
+  ungroup %>%
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by model size
+    new_levels <- df %>%
+      arrange(size) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_adult_pretraining<-
+bert_output %>%
+   filter(age_group == "Adult-directed speech") %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Cabiddu", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>% mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(condition = str_to_title(condition)) %>%
+  mutate(model = factor(model),
+         condition = factor(condition),
+         resp = factor(resp)) %>%
+  group_by(model, condition, resp, .drop = FALSE) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, resp, fill = list(n= 0)) %>%
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>% 
+    mutate(perc = case_when(
+    condition == "Control" ~ (perc - cabiddu_control)^2,
+    condition == "Lexical" ~ (perc - cabiddu_lexical)^2,
+    condition == "Semantic" ~ (perc - cabiddu_semantic)^2,
+  )) %>%  
+  group_by(model) %>% 
+  summarise(primary_diff = sqrt(
+    perc[which(condition == "Control")] +
+      #mean(
+      #  c(
+        #  perc[which(condition == "Lexical")]
+       #   ,
+           perc[which(condition == "Semantic")]
+      #    )
+       # )
+              )) %>% 
+  ungroup %>%
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by pretraining size
+    new_levels <- df %>%
+      arrange(pretraining) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_child_pretraining<-
+bert_output %>%
+   filter(age_group == "Child-directed speech") %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Cabiddu", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>% mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(condition = str_to_title(condition)) %>%
+  mutate(model = factor(model),
+         condition = factor(condition),
+         resp = factor(resp)) %>%
+  group_by(model, condition, resp, .drop = FALSE) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, resp, fill = list(n= 0)) %>%
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>% 
+    mutate(perc = case_when(
+    condition == "Control" ~ (perc - cabiddu_control)^2,
+    condition == "Lexical" ~ (perc - cabiddu_lexical)^2,
+    condition == "Semantic" ~ (perc - cabiddu_semantic)^2,
+  )) %>%  
+  group_by(model) %>% 
+  summarise(primary_diff = sqrt(
+    perc[which(condition == "Control")] +
+      #mean(
+      #  c(
+        #  perc[which(condition == "Lexical")]
+       #   ,
+           perc[which(condition == "Semantic")]
+      #    )
+       # )
+              )) %>% 
+  ungroup %>%
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by pretraining size
+    new_levels <- df %>%
+      arrange(pretraining) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+gridExtra::grid.arrange(
+  # Cabiddu competition
+ plot_adult_model_size %>% 
+
+  ggplot(aes(x = log(size), y = primary_diff)) +
+  geom_hline(yintercept=0, linetype="solid", size = 0.7) + 
+    geom_point(aes(colour = Family), size = 5, alpha = .7) +
+  geom_smooth(method = "lm", se = TRUE, colour = "black", size = 2, linetype = "dashed") +
+   geom_smooth(data = plot_child_model_size, method = "lm", se = TRUE, colour = "black", size = 2, linetype = "solid") +
+  geom_smooth(aes(colour = Family), method = "lm", se = FALSE) +
+  labs(y = "Euclidean Distance (Model vs. Children)", x = "Model size (log million parameters)") +
+  theme_bw() +
+  scale_colour_manual(values = my_palette) +
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=25, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=25),
+        strip.text = element_text(size=20),
+        legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=20, margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25)),
+
+# Cabiddu competition
+plot_adult_pretraining %>% 
+
+  ggplot(aes(x = log(pretraining), y = primary_diff)) +
+  geom_hline(yintercept=0, linetype="solid", size = 0.7) + 
+    geom_point(aes(colour = Family), size = 5, alpha = .7) +
+  geom_smooth(method = "lm", se = TRUE, colour = "black", size = 2, linetype = "dashed") +
+  geom_smooth(data = plot_child_pretraining, method = "lm", se = TRUE, colour = "black", size = 2, linetype = "solid") +
+  labs(y = "Euclidean Distance (Model vs. Children)", x = "Pretraining size (log GB)") +
+  theme_bw() +
+  scale_colour_manual(values = my_palette) +
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=25, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=25),
+        strip.text = element_text(size=20),
+        legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=20, margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25)),
+
+ncol = 2
+)
+```
+\newline
+
+```{r echo=FALSE}
+mod_data<- bert_output %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Cabiddu", experiment == "a") %>% 
+  group_by(age_group, model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>% mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(condition = str_to_title(condition)) %>%
+  mutate(age_group = factor(age_group), model = factor(model),
+         condition = factor(condition),
+         resp = factor(resp)) %>%
+  group_by(age_group, model, condition, resp, .drop = FALSE) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(age_group, model, condition, resp, fill = list(n= 0)) %>%
+  group_by(age_group, model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>% 
+    mutate(perc = case_when(
+    condition == "Control" ~ (perc - cabiddu_control)^2,
+    condition == "Lexical" ~ (perc - cabiddu_lexical)^2,
+    condition == "Semantic" ~ (perc - cabiddu_semantic)^2,
+  )) %>%  
+  group_by(age_group, model) %>% 
+  summarise(primary_diff = sqrt(
+    perc[which(condition == "Control")] +
+      #mean(
+      #  c(
+       #   perc[which(condition == "Lexical")]
+       #   ,
+           perc[which(condition == "Semantic")]
+      #    )
+      #  )
+              )) %>% 
+  ungroup %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>% 
+  rename(`model size` = size,
+         `pretraining size` = pretraining)
+```
+
+```{r echo=FALSE}
+  # LINEAR MIXED-EFFECT MODELs
+`Null model` <-  lmer(primary_diff ~  1 + (1|family), data = mod_data)
+
+`+ Age group` <-  lmer(primary_diff ~  age_group + (1|family), data = mod_data)
+
+`+ Pretraining` <- lmer(primary_diff ~  age_group + log(`pretraining size`) + (1|family), data = mod_data)
+
+`+ Model size` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (1|family), data = mod_data)
+
+`+ Age group x Model size` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (1|family), data = mod_data)
+
+`+ Age group x Pretraining` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (1|family), data = mod_data)
+
+`+ Pretraining x Model size` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (log(`pretraining size`) * log(`model size`)) +(1|family), data = mod_data)
+
+`+ Age group x Pretraining x Model size` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (log(`pretraining size`) * log(`model size`)) + (age_group * log(`pretraining size`) * log(`model size`)) + (1|family), data = mod_data)
+
+anova(`Null model`,
+      `+ Age group`,
+      `+ Pretraining`,
+      `+ Model size`,
+      `+ Age group x Model size`,
+      `+ Age group x Pretraining`,
+      `+ Pretraining x Model size`,
+      `+ Age group x Pretraining x Model size`
+      ) %>% 
+  round_anova %>%
+  kable
+```
+
+\newline
+
+```{r echo = FALSE}
+tab_model(`+ Pretraining`, dv.labels = "'+ Pretraining' model<br>Cabiddu et al. (2022)<br>Verb-Event Condition")
+```
+
+\newline
+
+```{r echo=FALSE, fig.width =17, fig.height=8, dpi=300}
+plot_adult_model_size <- 
+  bert_output %>%
+  filter(age_group == "Adult-directed speech") %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Cabiddu", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>% mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(condition = str_to_title(condition)) %>%
+  mutate(model = factor(model),
+         condition = factor(condition),
+         resp = factor(resp)) %>%
+  group_by(model, condition, resp, .drop = FALSE) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, resp, fill = list(n= 0)) %>% 
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>% 
+    mutate(perc = case_when(
+    condition == "Control" ~ (perc - cabiddu_control)^2,
+    condition == "Lexical" ~ (perc - cabiddu_lexical)^2,
+    condition == "Semantic" ~ (perc - cabiddu_semantic)^2,
+  )) %>%  
+  group_by(model) %>% 
+  summarise(primary_diff = sqrt(
+    perc[which(condition == "Control")] +
+     # mean(
+    #    c(
+          perc[which(condition == "Lexical")]
+    #      ,
+     #      perc[which(condition == "Semantic")]
+    #      )
+     #   )
+              )) %>% 
+  ungroup %>%
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by model size
+    new_levels <- df %>%
+      arrange(size) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_child_model_size <- 
+  bert_output %>%
+  filter(age_group == "Child-directed speech") %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Cabiddu", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>% mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(condition = str_to_title(condition)) %>%
+  mutate(model = factor(model),
+         condition = factor(condition),
+         resp = factor(resp)) %>%
+  group_by(model, condition, resp, .drop = FALSE) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, resp, fill = list(n= 0)) %>% 
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>% 
+    mutate(perc = case_when(
+    condition == "Control" ~ (perc - cabiddu_control)^2,
+    condition == "Lexical" ~ (perc - cabiddu_lexical)^2,
+    condition == "Semantic" ~ (perc - cabiddu_semantic)^2,
+  )) %>%  
+  group_by(model) %>% 
+  summarise(primary_diff = sqrt(
+    perc[which(condition == "Control")] +
+     # mean(
+    #    c(
+          perc[which(condition == "Lexical")]
+    #      ,
+     #      perc[which(condition == "Semantic")]
+    #      )
+     #   )
+              )) %>% 
+  ungroup %>%
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by model size
+    new_levels <- df %>%
+      arrange(size) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_adult_pretraining<-
+bert_output %>%
+   filter(age_group == "Adult-directed speech") %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Cabiddu", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>% mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(condition = str_to_title(condition)) %>%
+  mutate(model = factor(model),
+         condition = factor(condition),
+         resp = factor(resp)) %>%
+  group_by(model, condition, resp, .drop = FALSE) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, resp, fill = list(n= 0)) %>%
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>% 
+    mutate(perc = case_when(
+    condition == "Control" ~ (perc - cabiddu_control)^2,
+    condition == "Lexical" ~ (perc - cabiddu_lexical)^2,
+    condition == "Semantic" ~ (perc - cabiddu_semantic)^2,
+  )) %>%  
+  group_by(model) %>% 
+  summarise(primary_diff = sqrt(
+    perc[which(condition == "Control")] +
+      #mean(
+      #  c(
+          perc[which(condition == "Lexical")]
+       #   ,
+        #   perc[which(condition == "Semantic")]
+      #    )
+       # )
+              )) %>% 
+  ungroup %>%
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by pretraining size
+    new_levels <- df %>%
+      arrange(pretraining) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+plot_child_pretraining<-
+bert_output %>%
+   filter(age_group == "Child-directed speech") %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Cabiddu", experiment == "a") %>% 
+  group_by(model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>% mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(condition = str_to_title(condition)) %>%
+  mutate(model = factor(model),
+         condition = factor(condition),
+         resp = factor(resp)) %>%
+  group_by(model, condition, resp, .drop = FALSE) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(model, condition, resp, fill = list(n= 0)) %>%
+  group_by(model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>% 
+    mutate(perc = case_when(
+    condition == "Control" ~ (perc - cabiddu_control)^2,
+    condition == "Lexical" ~ (perc - cabiddu_lexical)^2,
+    condition == "Semantic" ~ (perc - cabiddu_semantic)^2,
+  )) %>%  
+  group_by(model) %>% 
+  summarise(primary_diff = sqrt(
+    perc[which(condition == "Control")] +
+      #mean(
+      #  c(
+          perc[which(condition == "Lexical")]
+       #   ,
+           #perc[which(condition == "Semantic")]
+      #    )
+       # )
+              )) %>% 
+  ungroup %>%
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  (function(df) {
+    # by pretraining size
+    new_levels <- df %>%
+      arrange(pretraining) %>% 
+      pull(model) %>% 
+      unique
+    
+    df %>% 
+      mutate(model = factor(model, levels = new_levels))
+  }) %>% 
+  mutate(family = factor(family, levels = family_levels)) %>% 
+  rename(Family = family)
+
+gridExtra::grid.arrange(
+  # Cabiddu competition
+ plot_adult_model_size %>% 
+
+  ggplot(aes(x = log(size), y = primary_diff)) +
+  geom_hline(yintercept=0, linetype="solid", size = 0.7) + 
+    geom_point(aes(colour = Family), size = 5, alpha = .7) +
+  geom_smooth(method = "lm", se = TRUE, colour = "black", size = 2, linetype = "dashed") +
+   geom_smooth(data = plot_child_model_size, method = "lm", se = TRUE, colour = "black", size = 2, linetype = "solid") +
+  geom_smooth(aes(colour = Family), method = "lm", se = FALSE) +
+  labs(y = "Euclidean Distance (Model vs. Children)", x = "Model size (log million parameters)") +
+  theme_bw() +
+  scale_colour_manual(values = my_palette) +
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=25, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=25),
+        strip.text = element_text(size=20),
+        legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=20, margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25)),
+
+# Cabiddu competition
+plot_adult_pretraining %>% 
+
+  ggplot(aes(x = log(pretraining), y = primary_diff)) +
+  geom_hline(yintercept=0, linetype="solid", size = 0.7) + 
+    geom_point(aes(colour = Family), size = 5, alpha = .7) +
+  geom_smooth(method = "lm", se = TRUE, colour = "black", size = 2, linetype = "dashed") +
+  geom_smooth(data = plot_child_pretraining, method = "lm", se = TRUE, colour = "black", size = 2, linetype = "solid") +
+  labs(y = "Euclidean Distance (Model vs. Children)", x = "Pretraining size (log GB)") +
+  theme_bw() +
+  scale_colour_manual(values = my_palette) +
+  theme(plot.title = element_text(size = 30), 
+        axis.text.x = element_text(size=25, angle = 0, vjust = 0.7),
+        axis.text.y = element_text(size=25),
+        strip.text = element_text(size=20),
+        legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(size=20, margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        plot.caption = element_text(hjust = 0, size = 25)),
+
+ncol = 2
+)
+```
+
+\newline
+
+```{r echo=FALSE}
+mod_data<- bert_output %>%
+  mutate(correct = case_when(
+    value == "0" ~ "subordinate",
+    value == "1" ~ "primary",
+    TRUE ~ correct
+  )) %>%
+  mutate(cosine = as.numeric(cosine)) %>%
+  filter(study == "Cabiddu", experiment == "a") %>% 
+  group_by(age_group, model, utterance) %>%
+  filter(cosine == max(cosine)) %>% 
+  ungroup %>% 
+  mutate(response = gold == sense) %>% mutate(resp = case_when(
+    response == TRUE ~ correct,
+    response == FALSE & correct == "subordinate" ~ "primary",
+    response == FALSE & correct == "primary" ~ "subordinate"
+  )) %>% 
+  mutate(condition = str_to_title(condition)) %>%
+  mutate(age_group = factor(age_group), model = factor(model),
+         condition = factor(condition),
+         resp = factor(resp)) %>%
+  group_by(age_group, model, condition, resp, .drop = FALSE) %>%
+  summarise(n = length(resp)) %>%
+  ungroup %>% 
+  complete(age_group, model, condition, resp, fill = list(n= 0)) %>%
+  group_by(age_group, model, condition) %>%
+  mutate(tot = sum(n)) %>%
+  ungroup %>% 
+  mutate(perc = round(n / tot * 100, 0)) %>% 
+  filter(resp != "subordinate") %>% 
+    mutate(perc = case_when(
+    condition == "Control" ~ (perc - cabiddu_control)^2,
+    condition == "Lexical" ~ (perc - cabiddu_lexical)^2,
+    condition == "Semantic" ~ (perc - cabiddu_semantic)^2,
+  )) %>%  
+  group_by(age_group, model) %>% 
+  summarise(primary_diff = sqrt(
+    perc[which(condition == "Control")] +
+      #mean(
+      #  c(
+          perc[which(condition == "Lexical")]
+       #   ,
+         #  perc[which(condition == "Semantic")]
+      #    )
+      #  )
+              )) %>% 
+  ungroup %>% 
+  left_join(family_codes, by = c("model" = "models")) %>% 
+  mutate(model = factor(model, levels = full_model_levels)) %>%
+  rename(`model size` = size,
+         `pretraining size` = pretraining)
+```
+
+```{r echo=FALSE}
+  # LINEAR MIXED-EFFECT MODELs
+`Null model` <-  lmer(primary_diff ~  1 + (1|family), data = mod_data)
+
+`+ Age group` <-  lmer(primary_diff ~  age_group + (1|family), data = mod_data)
+
+`+ Pretraining` <- lmer(primary_diff ~  age_group + log(`pretraining size`) + (1|family), data = mod_data)
+
+`+ Model size` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (1|family), data = mod_data)
+
+`+ Age group x Model size` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (1|family), data = mod_data)
+
+`+ Age group x Pretraining` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (1|family), data = mod_data)
+
+`+ Pretraining x Model size` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (log(`pretraining size`) * log(`model size`)) +(1|family), data = mod_data)
+
+`+ Age group x Pretraining x Model size` <- lmer(primary_diff ~  age_group + log(`model size`) + log(`pretraining size`) + (age_group * log(`model size`)) + (age_group * log(`pretraining size`)) + (log(`pretraining size`) * log(`model size`)) + (age_group * log(`pretraining size`) * log(`model size`)) + (1|family), data = mod_data)
+
+anova(`Null model`,
+      `+ Age group`,
+      `+ Pretraining`,
+      `+ Model size`,
+      `+ Age group x Model size`,
+      `+ Age group x Pretraining`,
+      `+ Pretraining x Model size`,
+      `+ Age group x Pretraining x Model size`
+      ) %>% 
+  round_anova %>%
+  kable
+```
+
+\newline
+
+```{r echo = FALSE}
+tab_model(`+ Model size`, dv.labels = "'+ Model size' model<br>Cabiddu et al. (2022)<br>Verb-Lexical Condition")
+```
+
+\newline
+
+
+
